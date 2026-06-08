@@ -1,0 +1,86 @@
+﻿@baseUrl = http://localhost:5135
+@token = PEGA_AQUI_ACCESS_TOKEN
+
+### Login (usa AccessToken de la respuesta)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@gp.local",
+  "password": "Admin1234"
+}
+
+### 1. Obtener todas las líneas de colección activas
+GET {{baseUrl}}/api/catalogos/lineas-coleccion?activo=true
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 2. Obtener líneas de colección por división
+GET {{baseUrl}}/api/catalogos/lineas-coleccion?division=Mochila&activo=true
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 3. Obtener una línea específica por ID
+GET {{baseUrl}}/api/catalogos/lineas-coleccion/550e8400-e29b-41d4-a716-446655440000
+Accept: application/json
+Authorization: Bearer {{token}}
+
+### 4. Crear una nueva línea de colección - Mochila 2026
+POST {{baseUrl}}/api/catalogos/lineas-coleccion
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "codigo": "MOC26",
+  "nombre": "Colección 2026 mochila",
+  "division": "Mochila",
+  "anio": 2026,
+  "activo": true
+}
+
+### 5. Crear una nueva línea de colección - Fitness 2026
+POST {{baseUrl}}/api/catalogos/lineas-coleccion
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "codigo": "FIT26",
+  "nombre": "Colección Fitness 2026",
+  "division": "Fitness",
+  "anio": 2026,
+  "activo": true
+}
+
+### 6. Crear una nueva línea de colección - Guantes 2025
+POST {{baseUrl}}/api/catalogos/lineas-coleccion
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "codigo": "GTY25",
+  "nombre": "Guantes 2025",
+  "division": "Guante",
+  "anio": 2025,
+  "activo": true
+}
+
+### 7. Actualizar una línea de colección
+PUT {{baseUrl}}/api/catalogos/lineas-coleccion/550e8400-e29b-41d4-a716-446655440000
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "codigo": "MOC26",
+  "nombre": "Colección 2026 - Mochilas",
+  "division": "Mochila",
+  "anio": 2026,
+  "activo": true
+}
+
+### 8. Desactivar una línea de colección
+DELETE {{baseUrl}}/api/catalogos/lineas-coleccion/550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer {{token}}
+
+### 9. Activar una línea de colección
+PUT {{baseUrl}}/api/catalogos/lineas-coleccion/550e8400-e29b-41d4-a716-446655440000/activar
+Authorization: Bearer {{token}}

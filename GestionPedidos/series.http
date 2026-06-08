@@ -1,0 +1,49 @@
+﻿@baseUrl = http://localhost:5135
+@token = PEGA_AQUI_ACCESS_TOKEN
+
+### Login (usa AccessToken de la respuesta)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@gp.local",
+  "password": "Admin1234"
+}
+
+### Listar series activas
+GET {{baseUrl}}/api/catalogos/series?activo=true
+Authorization: Bearer {{token}}
+
+### Obtener serie por id
+GET {{baseUrl}}/api/catalogos/series/00000000-0000-0000-0000-000000000101
+Authorization: Bearer {{token}}
+
+### Crear serie
+POST {{baseUrl}}/api/catalogos/series
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "codigo": "IY",
+  "nombre": "Espinillera",
+  "activo": true
+}
+
+### Actualizar serie
+PUT {{baseUrl}}/api/catalogos/series/00000000-0000-0000-0000-000000000101
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "codigo": "PP",
+  "nombre": "Guante",
+  "activo": true
+}
+
+### Desactivar serie
+DELETE {{baseUrl}}/api/catalogos/series/00000000-0000-0000-0000-000000000101
+Authorization: Bearer {{token}}
+
+### Activar serie
+PUT {{baseUrl}}/api/catalogos/series/00000000-0000-0000-0000-000000000101/activar
+Authorization: Bearer {{token}}

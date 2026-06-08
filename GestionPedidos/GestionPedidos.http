@@ -1,0 +1,535 @@
+@GestionPedidos_HostAddress = http://localhost:5135
+@token = REEMPLAZAR_TOKEN
+@clienteId = REEMPLAZAR_ID_CLIENTE
+@empleadoId = REEMPLAZAR_ID_EMPLEADO
+@productoId = REEMPLAZAR_ID_PRODUCTO
+@estiloId = REEMPLAZAR_ID_ESTILO
+@varianteId = REEMPLAZAR_ID_VARIANTE
+@skuId = REEMPLAZAR_ID_SKU
+@politicaId = REEMPLAZAR_ID_POLITICA
+@precioId = REEMPLAZAR_ID_PRECIO
+@pedidoId = REEMPLAZAR_ID_PEDIDO
+@lineaPedidoId = REEMPLAZAR_ID_LINEA_PEDIDO
+@usuarioClienteId = REEMPLAZAR_ID_USUARIO_CLIENTE
+@paisCatalogoId = REEMPLAZAR_ID_PAIS
+@areaCatalogoId = REEMPLAZAR_ID_AREA
+@estadoCatalogoId = REEMPLAZAR_ID_ESTADO
+
+POST {{GestionPedidos_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@gp.local",
+  "password": "Admin1234"
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/auth/me
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/empleados
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/empleados
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "numeroEmpleado": "VEN-001",
+  "nombres": "Elvira",
+  "apellidos": "Ruiz",
+  "idArea": 1,
+  "area": "Ventas",
+  "activo": true
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/empleados/{{empleadoId}}/usuario
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "email": "elvira@gp.local",
+  "password": "Pass1234",
+  "role": "Comercial"
+}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/empleados/{{empleadoId}}/usuario/password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "password": "NuevaClave1234"
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/clientes
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/clientes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombreComercial": "Paco Munoz",
+  "tipo": "Distribuidor",
+  "moneda": "USD",
+  "canalVenta": "Exportacion",
+  "limiteCredito": 50000,
+  "activo": true
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/clientes/{{clienteId}}/direcciones
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idPais": {{paisCatalogoId}},
+  "idEstadoCatalogo": 1,
+  "alias": "Principal",
+  "linea1": "Calle 123",
+  "linea2": "Oficina 4",
+  "ciudad": "Monterrey",
+  "estado": "Nuevo Leon",
+  "codigoPostal": "64000",
+  "pais": "MX",
+  "esPrincipal": true
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/clientes/{{clienteId}}/usuarios
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/clientes/{{clienteId}}/usuarios
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "email": "paco@cliente.com",
+  "password": "Cliente1234"
+}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/clientes/{{clienteId}}/usuarios/{{usuarioClienteId}}/password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "password": "OtraClave1234"
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/asignaciones-cliente-empleado
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idEmpleado": "{{empleadoId}}",
+  "idCliente": "{{clienteId}}",
+  "tipoRelacion": "Responsable",
+  "activo": true
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/asignaciones-cliente-empleado/empleados/{{empleadoId}}/clientes?activo=true
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/asignaciones-cliente-empleado/clientes/{{clienteId}}/empleados?activo=true
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/pedidos
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/pedidos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idCliente": "{{clienteId}}",
+  "idDireccionEnvio": null,
+  "idPolitica": null,
+  "moneda": "USD",
+  "notas": "Pedido de prueba por cartera",
+  "lineas": [
+    {
+      "idSku": "REEMPLAZAR_ID_SKU",
+      "cantidad": 2,
+      "precioUnitario": 99.90,
+      "descuentoLinea": 0
+    }
+  ]
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/catalogo/tallas?activo=true&segmento=Adulto
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/catalogo/productos?activo=true&division=Guante
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/catalogo/productos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "modelo": "GUA-PRO-ELITE",
+  "division": "Guante",
+  "serie": "PP",
+  "idLineaColeccion": null,
+  "gama": "Pro",
+  "hsCode": "6116.10",
+  "idEstado": 1,
+  "activo": true
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/catalogo/estilos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idProducto": "{{productoId}}",
+  "nombre": "Negro / Azul",
+  "descripcion": "Combinacion principal",
+  "urlImagenReferencia": "https://cdn.local/guante-pro-elite.png"
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/catalogo/variantes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idProducto": "{{productoId}}",
+  "idEstilo": "{{estiloId}}",
+  "segmento": "Adulto",
+  "codigoCombinacion": "NA",
+  "colorNombre": "Negro",
+  "colorNombreEn": "Black",
+  "rangoCorrida": "7-11",
+  "urlImagen": "https://cdn.local/guante-pro-elite-negro.png",
+  "itemCode": "GUA-PRO-ELITE-NA",
+  "codigoBarras": "750000000001",
+  "activo": true
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/catalogo/skus
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idVariante": "{{varianteId}}",
+  "idTalla": 1,
+  "activo": true,
+  "stockDisponible": 120,
+  "stockReservado": 10
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/catalogo/skus?idProducto={{productoId}}&activo=true&soloConStock=true
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/precios/politicas?activo=true
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/precios/politicas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Cliente Premium Exportacion",
+  "tipo": "ClienteEspecifico",
+  "prioridad": 10,
+  "factorDescuento": 0,
+  "vigenteDesde": "2026-03-31T00:00:00Z",
+  "vigenteHasta": null,
+  "activo": true
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/precios
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idSku": "{{skuId}}",
+  "idPolitica": "{{politicaId}}",
+  "idCliente": "{{clienteId}}",
+  "moneda": "USD",
+  "precioNeto": 100,
+  "vigenteDesde": "2026-03-31T00:00:00Z",
+  "vigenteHasta": null,
+  "activo": true
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/precios
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idSku": "{{skuId}}",
+  "idPolitica": "{{politicaId}}",
+  "idCliente": null,
+  "moneda": "USD",
+  "precioNeto": 120,
+  "vigenteDesde": "2026-03-31T00:00:00Z",
+  "vigenteHasta": null,
+  "activo": true
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/precios?idSku={{skuId}}&idCliente={{clienteId}}&moneda=USD&activo=true
+Authorization: Bearer {{token}}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/precios/{{precioId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idPolitica": "{{politicaId}}",
+  "idCliente": "{{clienteId}}",
+  "moneda": "USD",
+  "precioNeto": 98,
+  "vigenteDesde": "2026-03-31T00:00:00Z",
+  "vigenteHasta": null,
+  "activo": true
+}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/precios/{{precioId}}
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/pedidos/{{pedidoId}}/lineas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idSku": "{{skuId}}",
+  "cantidad": 1,
+  "descuentoLinea": 0
+}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/pedidos/{{pedidoId}}/lineas/{{lineaPedidoId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cantidad": 3
+}
+
+###
+
+DELETE {{GestionPedidos_HostAddress}}/api/pedidos/{{pedidoId}}/lineas/{{lineaPedidoId}}
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/pedidos/{{pedidoId}}/historial
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/catalogo/comercial?idCliente={{clienteId}}&soloConStock=true&search=guante
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/catalogos/paises?activo=true
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/catalogos/areas?activo=true
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/catalogos/estados?idPais={{paisCatalogoId}}&activo=true
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/catalogos/paises
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Mexico",
+  "codigoISO": "MX",
+  "activo": true
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/catalogos/areas
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Ventas",
+  "activo": true
+}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/catalogos/estados
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idPais": {{paisCatalogoId}},
+  "nombre": "Nuevo Leon",
+  "activo": true
+}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/catalogos/paises/{{paisCatalogoId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Mexico",
+  "codigoISO": "MX",
+  "activo": true
+}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/catalogos/areas/{{areaCatalogoId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Ventas Nacionales",
+  "activo": true
+}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/catalogos/estados/{{estadoCatalogoId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idPais": {{paisCatalogoId}},
+  "nombre": "Nuevo Leon",
+  "activo": true
+}
+
+###
+
+DELETE {{GestionPedidos_HostAddress}}/api/catalogos/paises/{{paisCatalogoId}}
+Authorization: Bearer {{token}}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/catalogos/paises/{{paisCatalogoId}}/activar
+Authorization: Bearer {{token}}
+
+###
+
+DELETE {{GestionPedidos_HostAddress}}/api/catalogos/areas/{{areaCatalogoId}}
+Authorization: Bearer {{token}}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/catalogos/areas/{{areaCatalogoId}}/activar
+Authorization: Bearer {{token}}
+
+###
+
+DELETE {{GestionPedidos_HostAddress}}/api/catalogos/estados/{{estadoCatalogoId}}
+Authorization: Bearer {{token}}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/catalogos/estados/{{estadoCatalogoId}}/activar
+Authorization: Bearer {{token}}
+
+###
+
+GET {{GestionPedidos_HostAddress}}/api/catalogo/visibilidad?idCliente={{clienteId}}
+Authorization: Bearer {{token}}
+
+###
+
+POST {{GestionPedidos_HostAddress}}/api/catalogo/visibilidad
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idCliente": "{{clienteId}}",
+  "idProducto": "{{productoId}}",
+  "tipoAcceso": "Visible"
+}
+
+###
+
+PUT {{GestionPedidos_HostAddress}}/api/catalogo/visibilidad/{{clienteId}}/{{productoId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idCliente": "{{clienteId}}",
+  "idProducto": "{{productoId}}",
+  "tipoAcceso": "Exclusivo"
+}
+
+###
+
+DELETE {{GestionPedidos_HostAddress}}/api/catalogo/visibilidad/{{clienteId}}/{{productoId}}
+Authorization: Bearer {{token}}
+
+###
+
