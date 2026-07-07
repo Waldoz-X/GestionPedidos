@@ -54,3 +54,10 @@ ehthumbs.db
 *.local
 # Descomenta la siguiente línea si usas configuraciones de desarrollo muy específicas:
 # appsettings.Development.json
+
+# Archivos específicos de Visual Studio y Rider en la raíz
+.vs/
+.idea/
+*.suo
+*.vsidx
+*.dtbcache*

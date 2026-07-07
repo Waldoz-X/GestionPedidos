@@ -4,6 +4,7 @@ using GestionPedidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GestionPedidos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260617085622_AddClientePoliticaAndPrecioChanges")]
+    partial class AddClientePoliticaAndPrecioChanges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -965,10 +968,9 @@ namespace GestionPedidos.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("cl_estatus_precio");
 
-                    b.Property<string>("ClMoneda")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("cl_moneda");
+                    b.Property<int>("ClMonedaIdCatalogoElemento")
+                        .HasColumnType("int")
+                        .HasColumnName("cl_moneda_id_catalogo_elemento");
 
                     b.Property<string>("ClOperadorCrea")
                         .IsRequired()
@@ -1021,6 +1023,9 @@ namespace GestionPedidos.Migrations
                         .HasColumnName("nb_artefacto_modifica");
 
                     b.HasKey("IdPrecio");
+
+                    b.HasIndex("ClMonedaIdCatalogoElemento")
+                        .HasDatabaseName("ix_et_precio_cl_moneda_id_catalogo_elemento");
 
                     b.HasIndex("IdCliente")
                         .HasDatabaseName("ix_et_precio_id_cliente");
@@ -2034,6 +2039,13 @@ namespace GestionPedidos.Migrations
 
             modelBuilder.Entity("GestionPedidos.Models.etPrecio", b =>
                 {
+                    b.HasOne("GestionPedidos.Models.Catalogo.CCatalogoElemento", "ClMoneda")
+                        .WithMany()
+                        .HasForeignKey("ClMonedaIdCatalogoElemento")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_et_precio_c_catalogo_elemento_cl_moneda_id_catalogo_elemento");
+
                     b.HasOne("GestionPedidos.Models.etCliente", "Cliente")
                         .WithMany("Precios")
                         .HasForeignKey("IdCliente")
@@ -2052,6 +2064,8 @@ namespace GestionPedidos.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_et_precio_skus_id_sku");
+
+                    b.Navigation("ClMoneda");
 
                     b.Navigation("Cliente");
 

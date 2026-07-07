@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GestionPedidos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260605173452_InitialCreate")]
+    [Migration("20260609005035_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -205,13 +205,9 @@ namespace GestionPedidos.Migrations
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("fe_modificacion");
 
-                    b.Property<int>("IdElemDivision")
+                    b.Property<int>("IdElemCategoria")
                         .HasColumnType("int")
-                        .HasColumnName("id_elem_division");
-
-                    b.Property<int?>("IdElemGama")
-                        .HasColumnType("int")
-                        .HasColumnName("id_elem_gama");
+                        .HasColumnName("id_elem_categoria");
 
                     b.Property<int?>("IdElemLineaColeccion")
                         .HasColumnType("int")
@@ -233,11 +229,8 @@ namespace GestionPedidos.Migrations
 
                     b.HasKey("IdProducto");
 
-                    b.HasIndex("IdElemDivision")
-                        .HasDatabaseName("ix_et_producto_id_elem_division");
-
-                    b.HasIndex("IdElemGama")
-                        .HasDatabaseName("ix_et_producto_id_elem_gama");
+                    b.HasIndex("IdElemCategoria")
+                        .HasDatabaseName("ix_et_producto_id_elem_categoria");
 
                     b.HasIndex("IdElemLineaColeccion")
                         .HasDatabaseName("ix_et_producto_id_elem_linea_coleccion");
@@ -1378,17 +1371,13 @@ namespace GestionPedidos.Migrations
                         .HasColumnType("int")
                         .HasColumnName("no_stock_reservado");
 
-                    b.Property<Guid>("VarianteIdVariante")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("variante_id_variante");
-
                     b.HasKey("IdSku");
 
                     b.HasIndex("IdElemTalla")
                         .HasDatabaseName("ix_et_sku_id_elem_talla");
 
-                    b.HasIndex("VarianteIdVariante")
-                        .HasDatabaseName("ix_et_sku_variante_id_variante");
+                    b.HasIndex("IdVariante")
+                        .HasDatabaseName("ix_et_sku_id_variante");
 
                     b.ToTable("et_sku");
                 });
@@ -1528,10 +1517,6 @@ namespace GestionPedidos.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("nb_artefacto_modifica");
 
-                    b.Property<Guid>("ProductoIdProducto")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("producto_id_producto");
-
                     b.Property<string>("UrlImagen")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("url_imagen");
@@ -1541,8 +1526,8 @@ namespace GestionPedidos.Migrations
                     b.HasIndex("IdElemCombinacion")
                         .HasDatabaseName("ix_et_variante_id_elem_combinacion");
 
-                    b.HasIndex("ProductoIdProducto")
-                        .HasDatabaseName("ix_et_variante_producto_id_producto");
+                    b.HasIndex("IdProducto")
+                        .HasDatabaseName("ix_et_variante_id_producto");
 
                     b.ToTable("et_variante");
                 });
@@ -1765,18 +1750,12 @@ namespace GestionPedidos.Migrations
 
             modelBuilder.Entity("GestionPedidos.Models.Catalogo.etProducto", b =>
                 {
-                    b.HasOne("GestionPedidos.Models.Catalogo.CCatalogoElemento", "Division")
+                    b.HasOne("GestionPedidos.Models.Catalogo.CCatalogoElemento", "Categoria")
                         .WithMany()
-                        .HasForeignKey("IdElemDivision")
+                        .HasForeignKey("IdElemCategoria")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_et_producto_c_catalogo_elemento_id_elem_division");
-
-                    b.HasOne("GestionPedidos.Models.Catalogo.CCatalogoElemento", "Gama")
-                        .WithMany()
-                        .HasForeignKey("IdElemGama")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_et_producto_c_catalogo_elemento_id_elem_gama");
+                        .HasConstraintName("fk_et_producto_c_catalogo_elemento_id_elem_categoria");
 
                     b.HasOne("GestionPedidos.Models.Catalogo.CCatalogoElemento", "LineaColeccion")
                         .WithMany()
@@ -1784,9 +1763,7 @@ namespace GestionPedidos.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_et_producto_c_catalogo_elemento_id_elem_linea_coleccion");
 
-                    b.Navigation("Division");
-
-                    b.Navigation("Gama");
+                    b.Navigation("Categoria");
 
                     b.Navigation("LineaColeccion");
                 });
@@ -2139,10 +2116,10 @@ namespace GestionPedidos.Migrations
 
                     b.HasOne("GestionPedidos.Models.etVariante", "Variante")
                         .WithMany("Skus")
-                        .HasForeignKey("VarianteIdVariante")
+                        .HasForeignKey("IdVariante")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_et_sku_variantes_variante_id_variante");
+                        .HasConstraintName("fk_et_sku_variantes_id_variante");
 
                     b.Navigation("Talla");
 
@@ -2176,10 +2153,10 @@ namespace GestionPedidos.Migrations
 
                     b.HasOne("GestionPedidos.Models.Catalogo.etProducto", "Producto")
                         .WithMany("Variantes")
-                        .HasForeignKey("ProductoIdProducto")
+                        .HasForeignKey("IdProducto")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_et_variante_et_producto_producto_id_producto");
+                        .HasConstraintName("fk_et_variante_et_producto_id_producto");
 
                     b.Navigation("Combinacion");
 

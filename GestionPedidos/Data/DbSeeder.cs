@@ -19,6 +19,7 @@ public static class DbSeeder
         await SeedRolesAsync(roleManager);
         await SeedAdminUserAsync(userManager);
         await SeedCatalogosAsync(context);
+        await SeedPoliticasPrecioAsync(context);
     }
 
     private static async Task SeedRolesAsync(RoleManager<IdentityRole<Guid>> roleManager)
@@ -60,21 +61,63 @@ public static class DbSeeder
 
     private static async Task SeedCatalogosAsync(AppDbContext context)
     {
-        // Solo sembrar si no hay datos
-        if (await context.CCatalogos.AnyAsync()) return;
-
         var operador = "SISTEMA";
         var fecha = DateTimeOffset.UtcNow;
 
-        // 1. Crear Catálogos Padre
+        // 1. Crear Catálogos Padre si no existen
+        if (!await context.CCatalogos.AnyAsync(c => c.ClCatalogo == "GENEROS"))
+        {
+            var catGeneros = CrearCatalogo("GENEROS", "Géneros", "Géneros de productos textiles", operador, fecha);
+            context.CCatalogos.Add(catGeneros);
+            await context.SaveChangesAsync();
+
+            context.CCatalogoElementos.AddRange(
+                CrearElemento(catGeneros.IdCatalogo, "MASCULINO", "Masculino", null, operador, fecha),
+                CrearElemento(catGeneros.IdCatalogo, "FEMENINO", "Femenino", null, operador, fecha),
+                CrearElemento(catGeneros.IdCatalogo, "UNISEX", "Unisex", null, operador, fecha),
+                CrearElemento(catGeneros.IdCatalogo, "NINOS", "Niños", null, operador, fecha)
+            );
+            await context.SaveChangesAsync();
+        }
+
+        // Sembrar subcategorías de MOCHILA si ya existe la división de MOCHILA pero faltan las subcategorías
+        var elMochilaExistente = await context.CCatalogoElementos
+            .Include(e => e.Catalogo)
+            .FirstOrDefaultAsync(e => e.ClCatalogoElemento == "IH" && e.Catalogo.ClCatalogo == "DIVISIONES");
+
+        if (elMochilaExistente != null)
+        {
+            var yaTieneSubcategorias = await context.CCatalogoElementos
+                .AnyAsync(e => e.IdCatalogoElementoPadre == elMochilaExistente.IdCatalogoElemento);
+
+            if (!yaTieneSubcategorias)
+            {
+                context.CCatalogoElementos.AddRange(
+                    CrearElemento(elMochilaExistente.IdCatalogo, "BACKPACK", "Mochila / Back Pack", elMochilaExistente.IdCatalogoElemento, operador, fecha),
+                    CrearElemento(elMochilaExistente.IdCatalogo, "MALETA", "Maleta de Viaje", elMochilaExistente.IdCatalogoElemento, operador, fecha),
+                    CrearElemento(elMochilaExistente.IdCatalogo, "NECESER", "Neceser", elMochilaExistente.IdCatalogoElemento, operador, fecha),
+                    CrearElemento(elMochilaExistente.IdCatalogo, "ZAPATERA", "Zapatera", elMochilaExistente.IdCatalogoElemento, operador, fecha),
+                    CrearElemento(elMochilaExistente.IdCatalogo, "MORRAL", "Morral", elMochilaExistente.IdCatalogoElemento, operador, fecha),
+                    CrearElemento(elMochilaExistente.IdCatalogo, "PORTAFOLIO", "Portafolio", elMochilaExistente.IdCatalogoElemento, operador, fecha),
+                    CrearElemento(elMochilaExistente.IdCatalogo, "BALONERA", "Balonera", elMochilaExistente.IdCatalogoElemento, operador, fecha),
+                    CrearElemento(elMochilaExistente.IdCatalogo, "BOLSA", "Bolsa", elMochilaExistente.IdCatalogoElemento, operador, fecha),
+                    CrearElemento(elMochilaExistente.IdCatalogo, "CROSSBODY", "Crossbody", elMochilaExistente.IdCatalogoElemento, operador, fecha)
+                );
+                await context.SaveChangesAsync();
+            }
+        }
+
+        // Si ya hay otros catálogos, no re-sembramos todo el resto
+        if (await context.CCatalogos.AnyAsync(c => c.ClCatalogo == "DIVISIONES")) return;
         var catAreas = CrearCatalogo("AREAS_DEPARTAMENTOS", "Áreas o Departamentos", "Departamentos de la empresa", operador, fecha);
         var catDivisiones = CrearCatalogo("DIVISIONES", "Divisiones de Producto", "Líneas principales de producto", operador, fecha);
         var catMonedas = CrearCatalogo("MONEDAS", "Monedas", "Divisas internacionales", operador, fecha);
         var catPaises = CrearCatalogo("PAISES", "Países", "Países donde se opera", operador, fecha);
         var catTallas = CrearCatalogo("TALLAS", "Tallas", "Tallas de productos", operador, fecha);
         var catCombinaciones = CrearCatalogo("COMBINACIONES", "Combinaciones de Color", "Catálogo maestro de combinaciones de colores para variantes de producto", operador, fecha);
+        var catLineasColeccion = CrearCatalogo("LINEAS_COLECCION", "Líneas / Colección", "Colecciones y temporadas de productos", operador, fecha);
 
-        context.CCatalogos.AddRange(catAreas, catDivisiones, catMonedas, catPaises, catTallas, catCombinaciones);
+        context.CCatalogos.AddRange(catAreas, catDivisiones, catMonedas, catPaises, catTallas, catCombinaciones, catLineasColeccion);
         await context.SaveChangesAsync();
 
         // 2. Elementos: AREAS_DEPARTAMENTOS
@@ -83,15 +126,91 @@ public static class DbSeeder
             CrearElemento(catAreas.IdCatalogo, "EXPORTACION", "Exportación", null, operador, fecha)
         );
 
+        // 2.1 Elementos: LINEAS_COLECCION
+        context.CCatalogoElementos.Add(
+            CrearElemento(catLineasColeccion.IdCatalogo, "GUA26", "2026 a 2027", null, operador, fecha)
+        );
+
         // 3. Elementos: DIVISIONES
+        var elGuante = CrearElemento(catDivisiones.IdCatalogo, "PP", "GUANTE", null, operador, fecha);
+        var elFitness = CrearElemento(catDivisiones.IdCatalogo, "FN", "FITNESS", null, operador, fecha);
+        var elMochila = CrearElemento(catDivisiones.IdCatalogo, "IH", "MOCHILA", null, operador, fecha);
+        var elCono = CrearElemento(catDivisiones.IdCatalogo, "IK", "CONO", null, operador, fecha);
+        var elEspinillera = CrearElemento(catDivisiones.IdCatalogo, "IY", "ESPINILLERA", null, operador, fecha);
+        var elMedia = CrearElemento(catDivisiones.IdCatalogo, "KT", "MEDIA", null, operador, fecha);
+        var elTextil = CrearElemento(catDivisiones.IdCatalogo, "TX", "TEXTIL", null, operador, fecha);
+
+        context.CCatalogoElementos.AddRange(elGuante, elFitness, elMochila, elCono, elEspinillera, elMedia, elTextil);
+        await context.SaveChangesAsync(); // Guardamos para obtener sus IDs
+
+        // 3.1 Subcategorías (Gamas de Guante)
         context.CCatalogoElementos.AddRange(
-            CrearElemento(catDivisiones.IdCatalogo, "PP", "GUANTE", null, operador, fecha),
-            CrearElemento(catDivisiones.IdCatalogo, "FN", "FITNESS", null, operador, fecha),
-            CrearElemento(catDivisiones.IdCatalogo, "IH", "MOCHILA", null, operador, fecha),
-            CrearElemento(catDivisiones.IdCatalogo, "IK", "CONO", null, operador, fecha),
-            CrearElemento(catDivisiones.IdCatalogo, "IY", "ESPINILLERA", null, operador, fecha),
-            CrearElemento(catDivisiones.IdCatalogo, "KT", "MEDIA", null, operador, fecha),
-            CrearElemento(catDivisiones.IdCatalogo, "TX", "TEXTIL", null, operador, fecha)
+            CrearElemento(catDivisiones.IdCatalogo, "SEMI PROFESIONAL", "SEMI PROFESIONAL", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "REPLICA", "REPLICA", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PROFESIONAL", "PROFESIONAL", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "SEMI SPINE", "SEMI SPINE", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "BASICO", "BASICO", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "AS", "AS", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "SPINE TURF", "SPINE TURF", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "TURF", "TURF", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "ALPHA", "ALPHA", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "MASTER", "MASTER", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "SUPERIOR", "SUPERIOR", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PRIME", "PRIME", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "TRAINING", "TRAINING", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "ALPHA PREMIER", "ALPHA PREMIER", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "TRAINING SPINE", "TRAINING SPINE", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PREMIUM", "PREMIUM", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PRIME SPINE", "PRIME SPINE", elGuante.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "GRAVITI", "GRAVITI", elGuante.IdCatalogoElemento, operador, fecha)
+        );
+
+        // 3.2 Subcategorías de CONO
+        context.CCatalogoElementos.AddRange(
+            CrearElemento(catDivisiones.IdCatalogo, "CONO TRIANGULAR", "CONO TRIANGULAR", elCono.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "CONO PLATILLO", "CONO PLATILLO", elCono.IdCatalogoElemento, operador, fecha)
+        );
+
+        // 3.2.1 Subcategorías de MOCHILA
+        context.CCatalogoElementos.AddRange(
+            CrearElemento(catDivisiones.IdCatalogo, "BACKPACK", "Mochila / Back Pack", elMochila.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "MALETA", "Maleta de Viaje", elMochila.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "NECESER", "Neceser", elMochila.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "ZAPATERA", "Zapatera", elMochila.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "MORRAL", "Morral", elMochila.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PORTAFOLIO", "Portafolio", elMochila.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "BALONERA", "Balonera", elMochila.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "BOLSA", "Bolsa", elMochila.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "CROSSBODY", "Crossbody", elMochila.IdCatalogoElemento, operador, fecha)
+        );
+
+        // 3.3 Subcategorías de FITNESS
+        context.CCatalogoElementos.AddRange(
+            CrearElemento(catDivisiones.IdCatalogo, "CAPRI", "CAPRI", elFitness.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "LEGGIN", "LEGGIN", elFitness.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "TOP", "TOP", elFitness.IdCatalogoElemento, operador, fecha)
+        );
+
+        // 3.4 Subcategorías de TEXTIL
+        context.CCatalogoElementos.AddRange(
+            CrearElemento(catDivisiones.IdCatalogo, "JERSEY", "JERSEY", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "SUDADERA", "SUDADERA", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "SHORT", "SHORT", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "TERMICO", "TERMICO", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PANTS", "PANTS", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PADDED", "PADDED", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PESQUERO", "PESQUERO", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "UNDER WEAR", "UNDER WEAR", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "CHAMARRA", "CHAMARRA", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "PLAYERA", "PLAYERA", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "CODERA", "CODERA", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "MALLA", "MALLA", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "T-SHIRT", "T-SHIRT", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "CAMISA", "CAMISA", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "CAMISETA", "CAMISETA", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "HOODIE", "HOODIE", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "BERMUDA", "BERMUDA", elTextil.IdCatalogoElemento, operador, fecha),
+            CrearElemento(catDivisiones.IdCatalogo, "POLO", "POLO", elTextil.IdCatalogoElemento, operador, fecha)
         );
 
         // 4. Elementos: MONEDAS
@@ -163,34 +282,7 @@ public static class DbSeeder
             CrearElemento(catTallas.IdCatalogo, "11", "Talla 11 - Adulto", elGuanteAdulto.IdCatalogoElemento, operador, fecha)
         );
 
-        // 7. OTROS CATÁLOGOS NECESARIOS (Gamas)
-        var catGamas = CrearCatalogo("GAMAS", "Gamas de Producto", "Gamas", operador, fecha);
-        
-        context.CCatalogos.AddRange(catGamas);
-        await context.SaveChangesAsync();
-
-        context.CCatalogoElementos.AddRange(
-            CrearElemento(catGamas.IdCatalogo, "SEMI PROFESIONAL", "SEMI PROFESIONAL", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "REPLICA", "REPLICA", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "PROFESIONAL", "PROFESIONAL", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "SEMI SPINE", "SEMI SPINE", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "BASICO", "BASICO", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "AS", "AS", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "SPINE TURF", "SPINE TURF", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "TURF", "TURF", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "ALPHA", "ALPHA", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "MASTER", "MASTER", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "SUPERIOR", "SUPERIOR", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "PRIME", "PRIME", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "TRAINING", "TRAINING", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "ALPHA PREMIER", "ALPHA PREMIER", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "TRAINING SPINE", "TRAINING SPINE", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "PREMIUM", "PREMIUM", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "PRIME SPINE", "PRIME SPINE", null, operador, fecha),
-            CrearElemento(catGamas.IdCatalogo, "GRAVITI", "GRAVITI", null, operador, fecha)
-        );
-
-        await context.SaveChangesAsync();
+        // [El Catálogo de GAMAS fue eliminado y migrado como subcategorías de las Divisiones correspondientes]
 
         // 8. Elementos: COMBINACIONES DE COLOR
         await SeedCombinacionesAsync(context, catCombinaciones.IdCatalogo, operador, fecha);
@@ -461,5 +553,89 @@ public static class DbSeeder
             NbArtefactoCrea = "DbSeeder",
             FeCreacion = fecha
         };
+    }
+
+    private static async Task SeedPoliticasPrecioAsync(AppDbContext context)
+    {
+        // Solo sembrar si no hay políticas aún
+        if (await context.PoliticasPrecios.AnyAsync()) return;
+
+        var operador = "SISTEMA";
+        var fecha = DateTimeOffset.UtcNow;
+
+        context.PoliticasPrecios.AddRange(
+            new etPoliticaPrecio
+            {
+                IdPolitica = Guid.NewGuid(),
+                NbPolitica = "Distribuidores Mexico",
+                ClTipoPolitica = "DISTRIBUIDOR",
+                NoPrioridad = 10,
+                MnFactorDescuento = 0.85m,   // 15% de descuento sobre lista
+                FeVigenteDesde = fecha,
+                FeVigenteHasta = null,        // Sin vencimiento
+                ClEstatusPolitica = "ACTIVO",
+                ClOperadorCrea = operador,
+                NbArtefactoCrea = "DbSeeder",
+                FeCreacion = fecha
+            },
+            new etPoliticaPrecio
+            {
+                IdPolitica = Guid.NewGuid(),
+                NbPolitica = "Distribuidores Espana",
+                ClTipoPolitica = "DISTRIBUIDOR",
+                NoPrioridad = 10,
+                MnFactorDescuento = 0.85m,
+                FeVigenteDesde = fecha,
+                FeVigenteHasta = null,
+                ClEstatusPolitica = "ACTIVO",
+                ClOperadorCrea = operador,
+                NbArtefactoCrea = "DbSeeder",
+                FeCreacion = fecha
+            },
+            new etPoliticaPrecio
+            {
+                IdPolitica = Guid.NewGuid(),
+                NbPolitica = "Mayoristas Mexico",
+                ClTipoPolitica = "MAYORISTA",
+                NoPrioridad = 20,
+                MnFactorDescuento = 0.75m,   // 25% de descuento (mejor precio que distribuidor)
+                FeVigenteDesde = fecha,
+                FeVigenteHasta = null,
+                ClEstatusPolitica = "ACTIVO",
+                ClOperadorCrea = operador,
+                NbArtefactoCrea = "DbSeeder",
+                FeCreacion = fecha
+            },
+            new etPoliticaPrecio
+            {
+                IdPolitica = Guid.NewGuid(),
+                NbPolitica = "Mayoristas Espana",
+                ClTipoPolitica = "MAYORISTA",
+                NoPrioridad = 20,
+                MnFactorDescuento = 0.75m,
+                FeVigenteDesde = fecha,
+                FeVigenteHasta = null,
+                ClEstatusPolitica = "ACTIVO",
+                ClOperadorCrea = operador,
+                NbArtefactoCrea = "DbSeeder",
+                FeCreacion = fecha
+            },
+            new etPoliticaPrecio
+            {
+                IdPolitica = Guid.NewGuid(),
+                NbPolitica = "Clientes VIP",
+                ClTipoPolitica = "VIP",
+                NoPrioridad = 30,
+                MnFactorDescuento = 0.65m,   // 35% de descuento (el mejor precio)
+                FeVigenteDesde = fecha,
+                FeVigenteHasta = null,
+                ClEstatusPolitica = "ACTIVO",
+                ClOperadorCrea = operador,
+                NbArtefactoCrea = "DbSeeder",
+                FeCreacion = fecha
+            }
+        );
+
+        await context.SaveChangesAsync();
     }
 }

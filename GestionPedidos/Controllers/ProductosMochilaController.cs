@@ -6,34 +6,27 @@ using Microsoft.AspNetCore.Mvc;
 namespace GestionPedidos.Controllers;
 
 [ApiController]
-[Route("api/productos/guantes")]
-[Authorize] // Protegido por JWT
-public class ProductosGuanteController(IProductoGuanteService service) : ControllerBase
+[Route("api/productos/mochila")]
+[Authorize]
+public class ProductosMochilaController(IProductoMochilaService service) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var guantes = await service.ObtenerTodosAsync();
-        return Ok(guantes);
-    }
-
-    [HttpGet("catalogo")]
-    public async Task<IActionResult> GetCatalogoPaginado([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
-    {
-        var result = await service.ObtenerCatalogoPaginadoAsync(page, pageSize);
-        return Ok(result);
+        var items = await service.ObtenerTodosAsync();
+        return Ok(items);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var guante = await service.ObtenerPorIdAsync(id);
-        if (guante == null) return NotFound();
-        return Ok(guante);
+        var item = await service.ObtenerPorIdAsync(id);
+        if (item == null) return NotFound();
+        return Ok(item);
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] ProductoGuanteCreateDto dto)
+    public async Task<IActionResult> Create([FromBody] ProductoMochilaCreateDto dto)
     {
         var email = User.Identity?.Name ?? "Desconocido";
         var creado = await service.CrearAsync(dto, email);
@@ -41,7 +34,7 @@ public class ProductosGuanteController(IProductoGuanteService service) : Control
     }
 
     [HttpPost("bulk")]
-    public async Task<IActionResult> CreateBulk([FromBody] IEnumerable<ProductoGuanteBulkDto> dtos)
+    public async Task<IActionResult> CreateBulk([FromBody] IEnumerable<ProductoMochilaBulkDto> dtos)
     {
         if (dtos == null || !dtos.Any())
         {
@@ -57,13 +50,12 @@ public class ProductosGuanteController(IProductoGuanteService service) : Control
         }
         catch (InvalidOperationException ex)
         {
-            // Errores de mapeo (claves no encontradas en catálogos)
             return BadRequest(new { message = "Errores de validación en la carga masiva.", errores = ex.Message });
         }
     }
 
     [HttpPut("{id:guid}")]
-    public async Task<IActionResult> Update(Guid id, [FromBody] ProductoGuanteUpdateDto dto)
+    public async Task<IActionResult> Update(Guid id, [FromBody] ProductoMochilaUpdateDto dto)
     {
         var email = User.Identity?.Name ?? "Desconocido";
         var actualizado = await service.ActualizarAsync(id, dto, email);

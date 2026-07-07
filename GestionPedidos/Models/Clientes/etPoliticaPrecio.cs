@@ -24,5 +24,6 @@ public class etPoliticaPrecio
     public DateTimeOffset? FeModificacion { get; set; }
 
     // ── Navegación ──
-    public ICollection<Precio> Precios { get; set; } = [];
+    public ICollection<etPrecio> Precios { get; set; } = [];
+    public ICollection<etClientePolitica> Clientes { get; set; } = [];
 }

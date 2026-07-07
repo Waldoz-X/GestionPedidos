@@ -171,9 +171,8 @@ namespace GestionPedidos.Migrations
                     id_producto = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     cl_producto = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     nb_producto = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    id_elem_division = table.Column<int>(type: "int", nullable: false),
+                    id_elem_categoria = table.Column<int>(type: "int", nullable: false),
                     id_elem_linea_coleccion = table.Column<int>(type: "int", nullable: true),
-                    id_elem_gama = table.Column<int>(type: "int", nullable: true),
                     cl_hs_code = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     cl_estatus_producto = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     cl_operador_crea = table.Column<string>(type: "nvarchar(max)", nullable: false),
@@ -187,14 +186,8 @@ namespace GestionPedidos.Migrations
                 {
                     table.PrimaryKey("PK_et_producto", x => x.id_producto);
                     table.ForeignKey(
-                        name: "fk_et_producto_c_catalogo_elemento_id_elem_division",
-                        column: x => x.id_elem_division,
-                        principalTable: "c_catalogo_elemento",
-                        principalColumn: "id_catalogo_elemento",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "fk_et_producto_c_catalogo_elemento_id_elem_gama",
-                        column: x => x.id_elem_gama,
+                        name: "fk_et_producto_c_catalogo_elemento_id_elem_categoria",
+                        column: x => x.id_elem_categoria,
                         principalTable: "c_catalogo_elemento",
                         principalColumn: "id_catalogo_elemento",
                         onDelete: ReferentialAction.Restrict);
@@ -443,8 +436,7 @@ namespace GestionPedidos.Migrations
                     nb_artefacto_crea = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     nb_artefacto_modifica = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     fe_creacion = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    fe_modificacion = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    producto_id_producto = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    fe_modificacion = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -456,8 +448,8 @@ namespace GestionPedidos.Migrations
                         principalColumn: "id_catalogo_elemento",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_et_variante_et_producto_producto_id_producto",
-                        column: x => x.producto_id_producto,
+                        name: "fk_et_variante_et_producto_id_producto",
+                        column: x => x.id_producto,
                         principalTable: "et_producto",
                         principalColumn: "id_producto",
                         onDelete: ReferentialAction.Restrict);
@@ -512,8 +504,7 @@ namespace GestionPedidos.Migrations
                     nb_artefacto_crea = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     nb_artefacto_modifica = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     fe_creacion = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    fe_modificacion = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    variante_id_variante = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    fe_modificacion = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -525,8 +516,8 @@ namespace GestionPedidos.Migrations
                         principalColumn: "id_catalogo_elemento",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "fk_et_sku_variantes_variante_id_variante",
-                        column: x => x.variante_id_variante,
+                        name: "fk_et_sku_variantes_id_variante",
+                        column: x => x.id_variante,
                         principalTable: "et_variante",
                         principalColumn: "id_variante",
                         onDelete: ReferentialAction.Restrict);
@@ -1084,14 +1075,9 @@ namespace GestionPedidos.Migrations
                 column: "sku_id_sku");
 
             migrationBuilder.CreateIndex(
-                name: "ix_et_producto_id_elem_division",
+                name: "ix_et_producto_id_elem_categoria",
                 table: "et_producto",
-                column: "id_elem_division");
-
-            migrationBuilder.CreateIndex(
-                name: "ix_et_producto_id_elem_gama",
-                table: "et_producto",
-                column: "id_elem_gama");
+                column: "id_elem_categoria");
 
             migrationBuilder.CreateIndex(
                 name: "ix_et_producto_id_elem_linea_coleccion",
@@ -1144,9 +1130,9 @@ namespace GestionPedidos.Migrations
                 column: "id_elem_talla");
 
             migrationBuilder.CreateIndex(
-                name: "ix_et_sku_variante_id_variante",
+                name: "ix_et_sku_id_variante",
                 table: "et_sku",
-                column: "variante_id_variante");
+                column: "id_variante");
 
             migrationBuilder.CreateIndex(
                 name: "ix_et_variante_id_elem_combinacion",
@@ -1154,9 +1140,9 @@ namespace GestionPedidos.Migrations
                 column: "id_elem_combinacion");
 
             migrationBuilder.CreateIndex(
-                name: "ix_et_variante_producto_id_producto",
+                name: "ix_et_variante_id_producto",
                 table: "et_variante",
-                column: "producto_id_producto");
+                column: "id_producto");
 
             migrationBuilder.CreateIndex(
                 name: "ix_et_visibilidad_catalogo_id_producto",

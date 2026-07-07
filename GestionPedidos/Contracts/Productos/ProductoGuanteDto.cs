@@ -3,9 +3,8 @@ namespace GestionPedidos.Contracts.Productos;
 public record ProductoGuanteCreateDto(
     string? ClProducto,
     string NbProducto,
-    int IdElemDivision,
+    int IdElemCategoria,
     int? IdElemLineaColeccion,
-    int? IdElemGama,
     string? ClHsCode,
     string ClEstatusProducto,
     string? NbPalma,
@@ -37,9 +36,8 @@ public record SkuNestedCreateDto(
 public record ProductoGuanteUpdateDto(
     string? ClProducto,
     string NbProducto,
-    int IdElemDivision,
+    int IdElemCategoria,
     int? IdElemLineaColeccion,
-    int? IdElemGama,
     string? ClHsCode,
     string ClEstatusProducto,
     string? NbPalma,
@@ -74,9 +72,8 @@ public record ProductoGuanteDto(
     Guid IdProducto,
     string? ClProducto,
     string NbProducto,
-    int IdElemDivision,
+    int IdElemCategoria,
     int? IdElemLineaColeccion,
-    int? IdElemGama,
     string? ClHsCode,
     string ClEstatusProducto,
     string? NbPalma,
@@ -89,4 +86,17 @@ public record ProductoGuanteDto(
     DateTimeOffset FeCreacion,
     DateTimeOffset? FeModificacion,
     List<GestionPedidos.Contracts.Variantes.VarianteDto>? Variantes = null
+);
+
+public record GuanteCatalogoDto(
+    Guid IdProducto,
+    Guid IdVariante,
+    string ClProducto,
+    string NbProducto,
+    string? UrlImagen,
+    string? DsColor,
+    string Tallas,
+    decimal PrecioBase,
+    string? DsCategoria,
+    string Estatus
 );

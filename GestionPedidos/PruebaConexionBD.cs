@@ -30,7 +30,7 @@ public class PruebaConexionBD
                 IdProducto = Guid.NewGuid(),
                 ClProducto = "TEST001",
                 NbProducto = "PRODUCTO DE PRUEBA",
-                IdElemDivision = 1,
+                IdElemCategoria = 1,
                 ClEstatusProducto = "ACTIVO",
                 ClOperadorCrea = "Admin",
                 NbArtefactoCrea = "Sistema",

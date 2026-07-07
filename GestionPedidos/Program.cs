@@ -17,6 +17,7 @@ using GestionPedidos.Services;
 using GestionPedidos.Services.Auth;
 using GestionPedidos.Security;
 using GestionPedidos.Models;
+using CloudinaryDotNet;
 
 var builder = WebApplication.CreateBuilder(args);
 const string localDevCorsPolicy = "LocalDevCorsPolicy";
@@ -24,8 +25,14 @@ const int fixedHttpsPort = 7140;
 
 // ── EF Core + SQL Server ──
 builder.Services.AddDbContext<AppDbContext>(options =>
+    // Cadena anterior (preservada comentada):
+    // options.UseSqlServer(
+    //     builder.Configuration.GetConnectionString("DefaultConnection"),
+    //     sqlOptions => sqlOptions.EnableRetryOnFailure());
+
+    // Nueva cadena de conexión fija (suministrada):
     options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
+        "Data Source=SQL1002.site4now.net;Initial Catalog=db_acb151_rinatdb;User Id=db_acb151_rinatdb_admin;Password=NXn5jiEmBpax@Sh;Encrypt=True;TrustServerCertificate=True;",
         sqlOptions => sqlOptions.EnableRetryOnFailure()));
 
 // ── ASP.NET Core Identity ──
@@ -108,6 +115,12 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddHealthChecks();
 builder.Services.AddScoped<ICatalogoService, CatalogoService>();
 builder.Services.AddScoped<IProductoGuanteService, ProductoGuanteService>();
+builder.Services.AddScoped<IProductoTextilService, ProductoTextilService>();
+builder.Services.AddScoped<IProductoConoService, ProductoConoService>();
+builder.Services.AddScoped<IProductoEspinilleraService, ProductoEspinilleraService>();
+builder.Services.AddScoped<IProductoAccesorioService, ProductoAccesorioService>();
+builder.Services.AddScoped<IProductoMochilaService, ProductoMochilaService>();
+builder.Services.AddScoped<IProductoFitnessService, ProductoFitnessService>();
 builder.Services.AddScoped<IEmpleadoService, EmpleadoService>();
 builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<IVarianteService, VarianteService>();
@@ -116,6 +129,22 @@ builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAsignacionService, AsignacionService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<IPrecioService, PrecioService>();
+builder.Services.AddScoped<IVisibilidadService, VisibilidadService>();
+builder.Services.AddScoped<IPoliticaService, PoliticaService>();
+
+// ── Cloudinary Configuration ──
+var cloudinaryConfig = builder.Configuration.GetSection("Cloudinary");
+Account account = new Account(
+    cloudinaryConfig["CloudName"],
+    cloudinaryConfig["ApiKey"],
+    cloudinaryConfig["ApiSecret"]
+);
+Cloudinary cloudinary = new Cloudinary(account);
+cloudinary.Api.Secure = true;
+builder.Services.AddSingleton(cloudinary);
+
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 
 // ── CORS - Permitir origen de Angular ──
 builder.Services.AddCors(options =>

@@ -37,6 +37,7 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
     public DbSet<etPoliticaPrecio> PoliticasPrecios => Set<etPoliticaPrecio>();
     public DbSet<etPrecio> Precios => Set<etPrecio>();
     public DbSet<etVisibilidadCatalogo> VisibilidadesCatalogo => Set<etVisibilidadCatalogo>();
+    public DbSet<etClientePolitica> ClientesPoliticas => Set<etClientePolitica>();
 
     // ── Pedidos ──
     public DbSet<etPedido> Pedidos => Set<etPedido>();
@@ -108,6 +109,7 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
         // --- Entidades con PK compuesta ---
         b.Entity<etAsignacionClienteEmpleado>().HasKey(a => new { a.IdEmpleado, a.IdCliente });
         b.Entity<etVisibilidadCatalogo>().HasKey(v => new { v.IdCliente, v.IdProducto });
+        b.Entity<etClientePolitica>().HasKey(cp => new { cp.IdCliente, cp.IdPolitica });
 
         // --- Especializaciones CTI (PK = FK a etProducto) ---
         b.Entity<etProductoGuante>().HasKey(p => p.IdProducto);
@@ -179,38 +181,42 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
 
         // ── etProducto → Catálogos dinámicos ──
         b.Entity<etProducto>(e =>
-        {            e.HasOne<CCatalogoElemento>(p => p.Division)
+        {
+            e.HasOne<CCatalogoElemento>(p => p.Categoria)
                 .WithMany()
-                .HasForeignKey(p => p.IdElemDivision)
+                .HasForeignKey(p => p.IdElemCategoria)
                 .OnDelete(DeleteBehavior.Restrict);
-
-
 
             e.HasOne<CCatalogoElemento>(p => p.LineaColeccion)
                 .WithMany()
                 .HasForeignKey(p => p.IdElemLineaColeccion)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            e.HasOne<CCatalogoElemento>(p => p.Gama)
-                .WithMany()
-                .HasForeignKey(p => p.IdElemGama)
-                .OnDelete(DeleteBehavior.Restrict);
-
 
         });
 
-        // ── etSku → Talla (catálogo) ──
+        // ── etSku → Talla y Variante ──
         b.Entity<etSku>(e =>
         {
+            e.HasOne(s => s.Variante)
+                .WithMany(v => v.Skus)
+                .HasForeignKey(s => s.IdVariante)
+                .OnDelete(DeleteBehavior.Restrict);
+
             e.HasOne<CCatalogoElemento>(s => s.Talla)
                 .WithMany()
                 .HasForeignKey(s => s.IdElemTalla)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // ── etVariante → Combinación de Color (catálogo) ──
+        // ── etVariante → Producto y Combinación de Color ──
         b.Entity<etVariante>(e =>
         {
+            e.HasOne(v => v.Producto)
+                .WithMany(p => p.Variantes)
+                .HasForeignKey(v => v.IdProducto)
+                .OnDelete(DeleteBehavior.Restrict);
+
             e.HasOne<CCatalogoElemento>(v => v.Combinacion)
                 .WithMany()
                 .HasForeignKey(v => v.IdElemCombinacion)
@@ -251,6 +257,41 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
             e.HasOne(a => a.Cliente)
                 .WithMany(c => c.AsignacionesEmpleado)
                 .HasForeignKey(a => a.IdCliente)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── etClientePolitica (asignación cliente → política) ──
+        b.Entity<etClientePolitica>(e =>
+        {
+            e.HasOne(cp => cp.Cliente)
+                .WithMany(c => c.Politicas)
+                .HasForeignKey(cp => cp.IdCliente)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(cp => cp.Politica)
+                .WithMany(p => p.Clientes)
+                .HasForeignKey(cp => cp.IdPolitica)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── etPrecio → etPoliticaPrecio (nullable) ──
+        b.Entity<etPrecio>(e =>
+        {
+            e.HasOne(p => p.Politica)
+                .WithMany(pol => pol.Precios)
+                .HasForeignKey(p => p.IdPolitica)
+                .IsRequired(false)                     // IdPolitica es nullable
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(p => p.Cliente)
+                .WithMany(c => c.Precios)
+                .HasForeignKey(p => p.IdCliente)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(p => p.Sku)
+                .WithMany(s => s.Precios)
+                .HasForeignKey(p => p.IdSku)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -303,6 +344,7 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
             [typeof(etCliente)]           = "et_cliente",
             [typeof(etDireccionCliente)]  = "et_direccion_cliente",
             [typeof(etAsignacionClienteEmpleado)] = "et_asignacion_cliente_empleado",
+            [typeof(etClientePolitica)]   = "et_cliente_politica",
 
             // Precios (prefijo et_)
             [typeof(etPoliticaPrecio)]    = "et_politica_precio",

@@ -37,6 +37,6 @@ global using TipoPoliticaPrecio = GestionPedidos.Models.Catalogo.CCatalogoElemen
 global using Genero = GestionPedidos.Models.Catalogo.CCatalogoElemento;
 global using TallaCatalogo = GestionPedidos.Models.Catalogo.CCatalogoElemento;
 
-global using GamaCatalogo = GestionPedidos.Models.Catalogo.CCatalogoElemento;
+global using CategoriaCatalogo = GestionPedidos.Models.Catalogo.CCatalogoElemento;
 global using EstadoCatalogo = GestionPedidos.Models.Catalogo.CCatalogoElemento;
 global using TipoRelacionClienteEmpleado = GestionPedidos.Models.Catalogo.CCatalogoElemento;

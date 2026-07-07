@@ -11,10 +11,12 @@ namespace GestionPedidos.Services;
 public interface IProductoGuanteService
 {
     Task<IEnumerable<ProductoGuanteDto>> ObtenerTodosAsync();
+    Task<GestionPedidos.Contracts.Common.PagedResult<GuanteCatalogoDto>> ObtenerCatalogoPaginadoAsync(int page, int pageSize);
     Task<ProductoGuanteDto?> ObtenerPorIdAsync(Guid idProducto);
     Task<ProductoGuanteDto> CrearAsync(ProductoGuanteCreateDto dto, string userEmail);
     Task<ProductoGuanteDto?> ActualizarAsync(Guid idProducto, ProductoGuanteUpdateDto dto, string userEmail);
     Task<bool> EliminarAsync(Guid idProducto);
+    Task<int> CrearMasivoAsync(IEnumerable<ProductoGuanteBulkDto> dtos, string userEmail);
 }
 
 public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteService
@@ -31,6 +33,46 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
         return guantes.Select(MapToDto);
     }
 
+    public async Task<GestionPedidos.Contracts.Common.PagedResult<GuanteCatalogoDto>> ObtenerCatalogoPaginadoAsync(int page, int pageSize)
+    {
+        var query = dbContext.Variantes
+            .Include(v => v.Producto).ThenInclude(p => p.Categoria)
+            .Include(v => v.Combinacion)
+            .Include(v => v.Skus).ThenInclude(s => s.Talla)
+            .Include(v => v.Skus).ThenInclude(s => s.Precios)
+            .Where(v => v.Producto.Categoria.Catalogo.ClCatalogo == "DIVISIONES")
+            // Assuming Guantes are in a specific category or we just return all Variantes
+            // If there are other products, we could filter by v.Producto.ProductosGuante.Any()
+            .Where(v => dbContext.ProductosGuante.Any(g => g.IdProducto == v.IdProducto))
+            .AsNoTracking();
+
+        int totalCount = await query.CountAsync();
+
+        var variantes = await query
+            .OrderByDescending(v => v.FeCreacion)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var items = variantes.Select(v => new GuanteCatalogoDto(
+            IdProducto: v.IdProducto,
+            IdVariante: v.IdVariante,
+            ClProducto: v.Producto.ClProducto ?? "",
+            NbProducto: v.Producto.NbProducto,
+            UrlImagen: v.UrlImagen,
+            DsColor: v.Combinacion?.NbCatalogoElemento ?? "",
+            Tallas: string.Join(", ", v.Skus.Where(s => s.Talla != null).OrderBy(s => s.Talla!.NbCatalogoElemento).Select(s => s.Talla!.NbCatalogoElemento)),
+            PrecioBase: v.Skus.SelectMany(s => s.Precios)
+                              .Where(p => p.IdCliente == null && p.IdPolitica == null && p.ClEstatusPrecio == "ACTIVO")
+                              .Select(p => p.MnPrecioNeto)
+                              .FirstOrDefault(),
+            DsCategoria: v.Producto.Categoria?.NbCatalogoElemento ?? "",
+            Estatus: v.Skus.Sum(s => s.NoStockDisponible) > 0 ? "EN STOCK" : "AGOTADO"
+        ));
+
+        return new GestionPedidos.Contracts.Common.PagedResult<GuanteCatalogoDto>(items, totalCount, page, pageSize);
+    }
+
     public async Task<ProductoGuanteDto?> ObtenerPorIdAsync(Guid idProducto)
     {
         var guante = await dbContext.ProductosGuante
@@ -45,18 +87,20 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
 
     public async Task<ProductoGuanteDto> CrearAsync(ProductoGuanteCreateDto dto, string userEmail)
     {
-        using var transaction = await dbContext.Database.BeginTransactionAsync();
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-        try
+            try
         {
             var producto = new etProducto
             {
                 IdProducto = Guid.NewGuid(),
                 ClProducto = dto.ClProducto,
                 NbProducto = dto.NbProducto,
-                IdElemDivision = dto.IdElemDivision,
+                IdElemCategoria = dto.IdElemCategoria,
                 IdElemLineaColeccion = dto.IdElemLineaColeccion,
-                IdElemGama = dto.IdElemGama,
                 ClHsCode = dto.ClHsCode,
                 ClEstatusProducto = dto.ClEstatusProducto,
                 ClOperadorCrea = userEmail,
@@ -124,11 +168,202 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
 
             return await ObtenerPorIdAsync(producto.IdProducto) ?? MapToDto(guante);
         }
-        catch (Exception)
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
+    }
+
+    public async Task<int> CrearMasivoAsync(IEnumerable<ProductoGuanteBulkDto> dtos, string userEmail)
+    {
+        // ═══════════════════════════════════════════════════════════
+        //  PASO 1: Pre-cargar catálogos a memoria (1 solo query)
+        //  Esto evita hacer miles de consultas individuales a la BD.
+        // ═══════════════════════════════════════════════════════════
+        var todosElementos = await dbContext.CCatalogoElementos
+            .Include(e => e.Catalogo)
+            .AsNoTracking()
+            .ToListAsync();
+
+        // Diccionarios para búsqueda ultra-rápida por clave de texto
+        // Clave del diccionario = ClCatalogoElemento (ej: "MASTER", "GUA26", "3")
+        var categorias = todosElementos
+            .Where(e => e.Catalogo.ClCatalogo == "DIVISIONES")
+            .ToDictionary(e => e.ClCatalogoElemento, e => e.IdCatalogoElemento, StringComparer.OrdinalIgnoreCase);
+
+        var lineasColeccion = todosElementos
+            .Where(e => e.Catalogo.ClCatalogo == "LINEAS_COLECCION")
+            .ToDictionary(e => e.ClCatalogoElemento, e => e.IdCatalogoElemento, StringComparer.OrdinalIgnoreCase);
+
+        var combinaciones = todosElementos
+            .Where(e => e.Catalogo.ClCatalogo == "COMBINACIONES")
+            .ToDictionary(e => e.ClCatalogoElemento, e => e.IdCatalogoElemento, StringComparer.OrdinalIgnoreCase);
+
+        var tallas = todosElementos
+            .Where(e => e.Catalogo.ClCatalogo == "TALLAS")
+            .ToDictionary(e => e.ClCatalogoElemento, e => e.IdCatalogoElemento, StringComparer.OrdinalIgnoreCase);
+
+        // ═══════════════════════════════════════════════════════════
+        //  PASO 2: Iterar el JSON y resolver claves → IDs en memoria
+        // ═══════════════════════════════════════════════════════════
+        var errores = new List<string>();
+        var productos = new List<etProducto>();
+        var guantes = new List<etProductoGuante>();
+        var variantes = new List<etVariante>();
+        var skus = new List<etSku>();
+        int fila = 0;
+
+        foreach (var dto in dtos)
         {
-            await transaction.RollbackAsync();
-            throw;
+            fila++;
+
+            // Resolver Categoría (obligatorio)
+            if (!categorias.TryGetValue(dto.ClCategoria, out var idCategoria))
+            {
+                errores.Add($"Fila {fila} ({dto.ClProducto}): Categoría '{dto.ClCategoria}' no encontrada en catálogo DIVISIONES.");
+                continue;
+            }
+
+            // Resolver Línea/Colección (opcional)
+            int? idLineaColeccion = null;
+            if (!string.IsNullOrWhiteSpace(dto.ClLineaColeccion))
+            {
+                if (!lineasColeccion.TryGetValue(dto.ClLineaColeccion, out var idLinea))
+                {
+                    errores.Add($"Fila {fila} ({dto.ClProducto}): Línea/Colección '{dto.ClLineaColeccion}' no encontrada en catálogo LINEAS_COLECCION.");
+                    continue;
+                }
+                idLineaColeccion = idLinea;
+            }
+
+            var producto = new etProducto
+            {
+                IdProducto = Guid.NewGuid(),
+                ClProducto = dto.ClProducto,
+                NbProducto = dto.NbProducto,
+                IdElemCategoria = idCategoria,
+                IdElemLineaColeccion = idLineaColeccion,
+                ClHsCode = dto.ClHsCode,
+                ClEstatusProducto = dto.ClEstatusProducto,
+                ClOperadorCrea = userEmail,
+                NbArtefactoCrea = "ProductoGuanteService.CrearMasivoAsync"
+            };
+            productos.Add(producto);
+
+            var guante = new etProductoGuante
+            {
+                IdProducto = producto.IdProducto,
+                NbPalma = dto.NbPalma,
+                DsComposicion = dto.DsComposicion,
+                ClMsCode = dto.ClMsCode,
+                ClIndicePalma = dto.ClIndicePalma,
+                DsForro = dto.DsForro,
+                DsCierre = dto.DsCierre,
+                DsHomologacion = dto.DsHomologacion,
+                Producto = producto
+            };
+            guantes.Add(guante);
+
+            if (dto.Variantes != null && dto.Variantes.Any())
+            {
+                foreach (var varDto in dto.Variantes)
+                {
+                    // Resolver Combinación de Color (opcional)
+                    int? idCombinacion = null;
+                    if (!string.IsNullOrWhiteSpace(varDto.ClCombinacion))
+                    {
+                        if (!combinaciones.TryGetValue(varDto.ClCombinacion, out var idCombo))
+                        {
+                            errores.Add($"Fila {fila} ({dto.ClProducto}): Combinación '{varDto.ClCombinacion}' no encontrada en catálogo COMBINACIONES.");
+                            continue;
+                        }
+                        idCombinacion = idCombo;
+                    }
+
+                    var variante = new etVariante
+                    {
+                        IdVariante = Guid.NewGuid(),
+                        IdProducto = producto.IdProducto,
+                        IdElemCombinacion = idCombinacion,
+                        UrlImagen = varDto.UrlImagen,
+                        ClEstatusVariante = varDto.ClEstatusVariante,
+                        ClOperadorCrea = userEmail,
+                        NbArtefactoCrea = "ProductoGuanteService.CrearMasivoAsync"
+                    };
+                    variantes.Add(variante);
+
+                    if (varDto.Skus != null && varDto.Skus.Any())
+                    {
+                        foreach (var skuDto in varDto.Skus)
+                        {
+                            // Resolver Talla (opcional)
+                            int? idTalla = null;
+                            if (!string.IsNullOrWhiteSpace(skuDto.ClTalla))
+                            {
+                                if (!tallas.TryGetValue(skuDto.ClTalla, out var idT))
+                                {
+                                    errores.Add($"Fila {fila} ({dto.ClProducto}): Talla '{skuDto.ClTalla}' no encontrada en catálogo TALLAS.");
+                                    continue;
+                                }
+                                idTalla = idT;
+                            }
+
+                            var sku = new etSku
+                            {
+                                IdSku = Guid.NewGuid(),
+                                IdVariante = variante.IdVariante,
+                                IdElemTalla = idTalla,
+                                ClItem = skuDto.ClItem,
+                                ClCodigoBarras = skuDto.ClCodigoBarras,
+                                ClEstatusSku = skuDto.ClEstatusSku,
+                                NoStockDisponible = skuDto.NoStockDisponible,
+                                NoStockReservado = skuDto.NoStockReservado,
+                                ClOperadorCrea = userEmail,
+                                NbArtefactoCrea = "ProductoGuanteService.CrearMasivoAsync"
+                            };
+                            skus.Add(sku);
+                        }
+                    }
+                }
+            }
         }
+
+        // Si hubo errores de mapeo, lanzar excepción con el detalle completo
+        if (errores.Any())
+        {
+            throw new InvalidOperationException(
+                $"Se encontraron {errores.Count} errores de mapeo en la carga masiva:\n" +
+                string.Join("\n", errores));
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        //  PASO 3: Guardar todo de un golpe en una sola transacción
+        // ═══════════════════════════════════════════════════════════
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
+
+            try
+            {
+                dbContext.Productos.AddRange(productos);
+                dbContext.ProductosGuante.AddRange(guantes);
+                dbContext.Variantes.AddRange(variantes);
+                dbContext.Skus.AddRange(skus);
+
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return productos.Count;
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     public async Task<ProductoGuanteDto?> ActualizarAsync(Guid idProducto, ProductoGuanteUpdateDto dto, string userEmail)
@@ -141,16 +376,18 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
 
         if (guante == null) return null;
 
-        using var transaction = await dbContext.Database.BeginTransactionAsync();
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
 
-        try
+            try
         {
             // Actualizar datos base del Producto
             guante.Producto.ClProducto = dto.ClProducto;
             guante.Producto.NbProducto = dto.NbProducto;
-            guante.Producto.IdElemDivision = dto.IdElemDivision;
+            guante.Producto.IdElemCategoria = dto.IdElemCategoria;
             guante.Producto.IdElemLineaColeccion = dto.IdElemLineaColeccion;
-            guante.Producto.IdElemGama = dto.IdElemGama;
             guante.Producto.ClHsCode = dto.ClHsCode;
             guante.Producto.ClEstatusProducto = dto.ClEstatusProducto;
             guante.Producto.ClOperadorModifica = userEmail;
@@ -295,11 +532,12 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
 
             return await ObtenerPorIdAsync(idProducto); // Recargar
         }
-        catch (Exception)
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     public async Task<bool> EliminarAsync(Guid idProducto)
@@ -314,8 +552,11 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
 
         if (guante == null) return false;
 
-        using var transaction = await dbContext.Database.BeginTransactionAsync();
-        try
+        var strategy = dbContext.Database.CreateExecutionStrategy();
+        return await strategy.ExecuteAsync(async () =>
+        {
+            using var transaction = await dbContext.Database.BeginTransactionAsync();
+            try
         {
             foreach (var variante in guante.Producto.Variantes)
             {
@@ -333,11 +574,12 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
             await transaction.CommitAsync();
             return true;
         }
-        catch (Exception)
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
     }
 
     private static ProductoGuanteDto MapToDto(etProductoGuante g)
@@ -368,9 +610,8 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
             g.IdProducto,
             g.Producto.ClProducto,
             g.Producto.NbProducto,
-            g.Producto.IdElemDivision,
+            g.Producto.IdElemCategoria,
             g.Producto.IdElemLineaColeccion,
-            g.Producto.IdElemGama,
             g.Producto.ClHsCode,
             g.Producto.ClEstatusProducto,
             g.NbPalma,

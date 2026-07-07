@@ -7,8 +7,7 @@ namespace GestionPedidos.Models;
 /// Representa el estilo visual (color, diseño gráfico) de un producto específico.
 /// 
 /// JERARQUÍA DE NEGOCIO (estilo catálogo Rinat / Amazon):
-///   etEstilo    → Código base del modelo (GPM5A3 = "ARIES")
-///   etProducto  → Gama/especificaciones técnicas (ARIES PRO, palma, composición)
+///   etProducto  → Producto base con su categoría (ARIES PRO → Subcategoría PROFESIONAL de GUANTE)
 ///   etVariante  → ★ COMBINACIÓN DE COLOR (343 "NEGRO/BLANCO/ROJO") + foto del producto en ese color
 ///   etSku       → Artículo vendible real (combinación + talla = lo que se pone en el carrito)
 ///

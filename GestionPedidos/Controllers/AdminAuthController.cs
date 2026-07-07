@@ -47,7 +47,7 @@ public class AdminAuthController : ControllerBase
     [Authorize(Roles = "Admin,Manager,User,EMPLEADO")]
     public async Task<ActionResult<UserProfileResponse>> GetProfile()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
         if (!Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized(new { message = "Token inválido" });
 
@@ -65,7 +65,7 @@ public class AdminAuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
         if (!Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized(new { message = "Token inválido" });
 
@@ -81,7 +81,7 @@ public class AdminAuthController : ControllerBase
     [Authorize(Roles = "Admin,Manager,User,EMPLEADO")]
     public async Task<ActionResult<AuthResponse>> Logout()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
         if (!Guid.TryParse(userIdClaim, out var userId))
             return Unauthorized(new { message = "Token inválido" });
 

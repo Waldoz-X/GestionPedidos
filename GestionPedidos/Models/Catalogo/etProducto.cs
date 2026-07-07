@@ -3,12 +3,12 @@ using GestionPedidos.Models.Catalogo;
 namespace GestionPedidos.Models.Catalogo;
 
 /// <summary>
-/// Tabla de PRODUCTOS/GAMAS. Representa una línea específica de un código de estilo.
+/// Tabla de PRODUCTOS. Representa un producto específico dentro de una categoría (División o Subcategoría).
 /// 
-/// Un mismo código de estilo (ClEstilo en etEstilo) puede tener múltiples Gamas/Productos.
-/// Ejemplo: GPM5A3 (ARIES) puede tener ARIES PRO, ARIES PRIME, ARIES AERO.
+/// Un mismo modelo puede tener múltiples productos (variaciones por gama/segmento).
+/// Ejemplo: ARIES puede tener ARIES PRO, ARIES PRIME, ARIES AERO.
 /// Cada uno es un producto independiente con su propia:
-/// - Gama (Prime/Pro/Aero = define palma, composición, características)
+/// - Categoría (División raíz o Subcategoría hija, ej: GUANTE → PROFESIONAL)
 /// - Variantes (combinaciones de color)
 /// - SKUs (variante + talla)
 /// - Inventario
@@ -21,9 +21,8 @@ public class etProducto
     public string NbProducto { get; set; } = null!;          // Nombre comercial completo (GOAL KEEPER JERSEY ARKANO ADU, ARIES PRO, etc.)
 
     // --- Catálogos Dinámicos (FKs a CCatalogoElemento) ---
-    public int IdElemDivision { get; set; }         // FK a CCatalogoElemento (Catálogo: DIVISIONES)
+    public int IdElemCategoria { get; set; }        // FK a CCatalogoElemento (Categoría: División o Subcategoría)
     public int? IdElemLineaColeccion { get; set; }  // FK a CCatalogoElemento (Catálogo: LINEAS_COLECCION)
-    public int? IdElemGama { get; set; }            // FK a CCatalogoElemento (Catálogo: GAMAS) - define características (Palma, etc)
 
 
     public string? ClHsCode { get; set; }
@@ -39,9 +38,8 @@ public class etProducto
     public DateTimeOffset? FeModificacion { get; set; }
 
     // ── Navegación a Catálogos Dinámicos ──
-    public CCatalogoElemento Division { get; set; } = null!;
+    public CCatalogoElemento Categoria { get; set; } = null!;
     public CCatalogoElemento? LineaColeccion { get; set; }
-    public CCatalogoElemento? Gama { get; set; }
 
 
     public ICollection<etVariante> Variantes { get; set; } = [];
