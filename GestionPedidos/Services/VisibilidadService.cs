@@ -25,6 +25,9 @@ public interface IVisibilidadService
 
     /// <summary>Lista todos los clientes que tienen acceso a un producto dado.</summary>
     Task<IEnumerable<VisibilidadDto>> ObtenerClientesDeProductoAsync(Guid idProducto);
+
+    /// <summary>Asigna visibilidad en bulk: 1 cliente + N productos en una sola transacción.</summary>
+    Task<VisibilidadBulkResponse> AsignarVisibilidadBulkAsync(VisibilidadBulkRequest request, string userEmail);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -133,5 +136,60 @@ public class VisibilidadService(AppDbContext dbContext) : IVisibilidadService
                 v.ClEstatusVisibilidad
             ))
             .ToListAsync();
+    }
+
+    public async Task<VisibilidadBulkResponse> AsignarVisibilidadBulkAsync(VisibilidadBulkRequest request, string userEmail)
+    {
+        var ahora = DateTimeOffset.UtcNow;
+        var idsProductos = request.IdsProductos.Distinct().ToList();
+
+        // 1. Cargar registros existentes para este cliente + estos productos (un solo query)
+        var existentes = await dbContext.VisibilidadesCatalogo
+            .Where(v => v.IdCliente == request.IdCliente && idsProductos.Contains(v.IdProducto))
+            .ToListAsync();
+
+        var existentesDict = existentes.ToDictionary(v => v.IdProducto);
+
+        var insertados = 0;
+        var actualizados = 0;
+
+        foreach (var idProducto in idsProductos)
+        {
+            if (existentesDict.TryGetValue(idProducto, out var registro))
+            {
+                // Update
+                registro.ClTipoAcceso = request.ClTipoAcceso;
+                registro.ClEstatusVisibilidad = "ACTIVO";
+                registro.ClOperadorModifica = userEmail;
+                registro.NbArtefactoModifica = "VisibilidadService.AsignarVisibilidadBulkAsync";
+                registro.FeModificacion = ahora;
+                actualizados++;
+            }
+            else
+            {
+                // Insert
+                dbContext.VisibilidadesCatalogo.Add(new etVisibilidadCatalogo
+                {
+                    IdCliente = request.IdCliente,
+                    IdProducto = idProducto,
+                    ClTipoAcceso = request.ClTipoAcceso,
+                    ClEstatusVisibilidad = "ACTIVO",
+                    ClOperadorCrea = userEmail,
+                    NbArtefactoCrea = "VisibilidadService.AsignarVisibilidadBulkAsync",
+                    FeCreacion = ahora
+                });
+                insertados++;
+            }
+        }
+
+        // 2. Un solo SaveChanges — una sola transacción
+        await dbContext.SaveChangesAsync();
+
+        return new VisibilidadBulkResponse(
+            TotalRecibidos: idsProductos.Count,
+            Insertados: insertados,
+            Actualizados: actualizados,
+            Errores: new List<string>()
+        );
     }
 }

@@ -13,6 +13,7 @@ public interface ISkuService
     Task<SkuDto> CrearAsync(SkuCreateDto dto, string userEmail);
     Task<SkuDto?> ActualizarAsync(Guid idSku, SkuUpdateDto dto, string userEmail);
     Task<bool> EliminarAsync(Guid idSku);
+    Task<IEnumerable<SkuCatalogoDto>> ObtenerTodosCatalogoAsync(Guid? idVariante, Guid? idProducto, bool? activo, bool? soloConStock);
 }
 
 public class SkuService(AppDbContext dbContext) : ISkuService
@@ -24,6 +25,55 @@ public class SkuService(AppDbContext dbContext) : ISkuService
             .ToListAsync();
 
         return skus.Select(MapToDto);
+    }
+
+    public async Task<IEnumerable<SkuCatalogoDto>> ObtenerTodosCatalogoAsync(Guid? idVariante, Guid? idProducto, bool? activo, bool? soloConStock)
+    {
+        var query = dbContext.Skus
+            .Include(s => s.Variante)
+                .ThenInclude(v => v.Producto)
+            .Include(s => s.Talla)
+                .ThenInclude(t => t.ElementoPadre)
+            .AsQueryable();
+
+        if (idVariante.HasValue)
+        {
+            query = query.Where(s => s.IdVariante == idVariante.Value);
+        }
+
+        if (idProducto.HasValue)
+        {
+            query = query.Where(s => s.Variante!.IdProducto == idProducto.Value);
+        }
+
+        if (activo.HasValue)
+        {
+            var estatus = activo.Value ? "ACTIVO" : "INACTIVO";
+            query = query.Where(s => s.ClEstatusSku == estatus);
+        }
+
+        if (soloConStock.HasValue && soloConStock.Value)
+        {
+            query = query.Where(s => (s.NoStockDisponible - s.NoStockReservado) > 0);
+        }
+
+        var results = await query.AsNoTracking().ToListAsync();
+
+        return results.Select(s => new SkuCatalogoDto(
+            s.IdSku,
+            s.IdVariante,
+            s.Variante!.IdProducto,
+            s.Variante!.Producto!.NbProducto,
+            s.IdElemTalla,
+            s.Talla?.NbCatalogoElemento ?? string.Empty,
+            s.Talla?.ElementoPadre?.NbCatalogoElemento ?? string.Empty,
+            s.ClEstatusSku == "ACTIVO",
+            s.NoStockDisponible,
+            s.NoStockReservado,
+            s.NoStockDisponible - s.NoStockReservado,
+            s.FeCreacion,
+            s.FeModificacion
+        ));
     }
 
     public async Task<IEnumerable<SkuDto>> ObtenerPorVarianteAsync(Guid idVariante)

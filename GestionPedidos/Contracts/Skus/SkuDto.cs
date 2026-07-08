@@ -31,3 +31,19 @@ public record SkuDto(
     DateTimeOffset FeCreacion,
     DateTimeOffset? FeModificacion
 );
+
+public record SkuCatalogoDto(
+    Guid Id,
+    Guid IdVariante,
+    Guid IdProducto,
+    string ModeloProducto,
+    int? IdTalla,
+    string EtiquetaTalla,
+    string SegmentoTalla,
+    bool Activo,
+    int StockDisponible,
+    int StockReservado,
+    int StockNeto,
+    DateTimeOffset CreadoEn,
+    DateTimeOffset? ActualizadoEn
+);

@@ -65,6 +65,30 @@ public class VisibilidadController(IVisibilidadService service) : ControllerBase
     }
 
     /// <summary>
+    /// Asigna visibilidad en bulk: 1 cliente + N productos en una sola transacción.
+    /// Máximo 1000 productos por llamada.
+    /// Solo Admin.
+    /// </summary>
+    [HttpPost("bulk")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AsignarVisibilidadBulk([FromBody] VisibilidadBulkRequest request)
+    {
+        if (request.IdsProductos == null || request.IdsProductos.Count == 0)
+            return BadRequest(new { message = "La lista de productos no puede estar vacía." });
+
+        if (request.IdsProductos.Count > 1000)
+            return BadRequest(new { message = "Máximo 1000 productos por llamada." });
+
+        var validos = new[] { "VISIBLE", "EXCLUSIVO", "OCULTO" };
+        if (!validos.Contains(request.ClTipoAcceso.ToUpperInvariant()))
+            return BadRequest(new { message = $"ClTipoAcceso inválido. Valores válidos: {string.Join(", ", validos)}" });
+
+        var userEmail = User.Identity?.Name ?? "Admin";
+        var resultado = await service.AsignarVisibilidadBulkAsync(request, userEmail);
+        return Ok(resultado);
+    }
+
+    /// <summary>
     /// Revoca el acceso de un cliente a un producto (elimina el registro del ACL).
     /// Solo Admin.
     /// </summary>
@@ -90,5 +114,18 @@ public class VisibilidadController(IVisibilidadService service) : ControllerBase
     {
         var clientes = await service.ObtenerClientesDeProductoAsync(idProducto);
         return Ok(clientes);
+    }
+
+    /// <summary>
+    /// Lista los productos visibles para un cliente específico.
+    /// Útil para el Admin para ver qué catálogo tiene asignado un cliente.
+    /// Solo Admin.
+    /// </summary>
+    [HttpGet("cliente/{idCliente:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ProductosDeCliente(Guid idCliente)
+    {
+        var productos = await service.ObtenerProductosVisiblesAsync(idCliente);
+        return Ok(productos);
     }
 }

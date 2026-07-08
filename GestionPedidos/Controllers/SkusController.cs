@@ -17,6 +17,17 @@ public class SkusController(ISkuService service) : ControllerBase
         return Ok(skus);
     }
 
+    [HttpGet("/api/catalogo/skus")]
+    public async Task<IActionResult> GetCatalogoSkus(
+        [FromQuery] Guid? idVariante,
+        [FromQuery] Guid? idProducto,
+        [FromQuery] bool? activo,
+        [FromQuery] bool? soloConStock)
+    {
+        var skus = await service.ObtenerTodosCatalogoAsync(idVariante, idProducto, activo, soloConStock);
+        return Ok(skus);
+    }
+
     [HttpGet("variante/{idVariante:guid}")]
     public async Task<IActionResult> GetByVariante(Guid idVariante)
     {

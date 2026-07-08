@@ -34,3 +34,23 @@ public record ProductoVisibleDto(
     string? ClLineaColeccion,
     string ClTipoAcceso   // "VISIBLE" | "EXCLUSIVO"
 );
+
+/// <summary>
+/// Request para asignar visibilidad en bulk.
+/// Un solo cliente + N productos + tipo de acceso.
+/// </summary>
+public record VisibilidadBulkRequest(
+    Guid IdCliente,
+    List<Guid> IdsProductos,
+    string ClTipoAcceso          // "VISIBLE" | "EXCLUSIVO" | "OCULTO"
+);
+
+/// <summary>
+/// Respuesta del endpoint bulk con contadores de la operación.
+/// </summary>
+public record VisibilidadBulkResponse(
+    int TotalRecibidos,
+    int Insertados,
+    int Actualizados,
+    List<string> Errores
+);
