@@ -4,10 +4,15 @@ namespace GestionPedidos.Contracts.Visibilidad;
 /// Información de visibilidad de un producto para un cliente específico.
 /// </summary>
 public record VisibilidadDto(
+    Guid IdVisibilidad,
     Guid IdCliente,
     string NbComercialCliente,
-    Guid IdProducto,
-    string NbProducto,
+    Guid? IdProducto,
+    string? NbProducto,
+    Guid? IdVariante,
+    string? NbCombinacion,
+    Guid? IdSku,
+    string? ClItem,
     string ClTipoAcceso,         // "VISIBLE" | "EXCLUSIVO" | "OCULTO"
     string ClEstatusVisibilidad
 );
@@ -18,7 +23,9 @@ public record VisibilidadDto(
 /// </summary>
 public record VisibilidadUpsertDto(
     Guid IdCliente,
-    Guid IdProducto,
+    Guid? IdProducto,
+    Guid? IdVariante,
+    Guid? IdSku,
     string ClTipoAcceso          // "VISIBLE" | "EXCLUSIVO" | "OCULTO"
 );
 

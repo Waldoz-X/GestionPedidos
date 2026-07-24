@@ -27,6 +27,7 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
     public DbSet<etProductoTextil> ProductosTextil => Set<etProductoTextil>();
     public DbSet<etVariante> Variantes => Set<etVariante>();
     public DbSet<etSku> Skus => Set<etSku>();
+    public DbSet<etMovimientoInventario> MovimientosInventario => Set<etMovimientoInventario>();
 
     // ── Clientes ──
     public DbSet<etCliente> Clientes => Set<etCliente>();
@@ -105,10 +106,11 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
         b.Entity<etEmpleado>().HasKey(e => e.IdEmpleado);
         b.Entity<etHistorialPrecio>().HasKey(h => h.Id);
         b.Entity<etHistorialPedido>().HasKey(h => h.Id);
+        b.Entity<etVisibilidadCatalogo>().HasKey(v => v.IdVisibilidad);
+        b.Entity<etMovimientoInventario>().HasKey(m => m.IdMovimiento);
 
         // --- Entidades con PK compuesta ---
         b.Entity<etAsignacionClienteEmpleado>().HasKey(a => new { a.IdEmpleado, a.IdCliente });
-        b.Entity<etVisibilidadCatalogo>().HasKey(v => new { v.IdCliente, v.IdProducto });
         b.Entity<etClientePolitica>().HasKey(cp => new { cp.IdCliente, cp.IdPolitica });
 
         // --- Especializaciones CTI (PK = FK a etProducto) ---
@@ -209,6 +211,15 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        // ── etMovimientoInventario ──
+        b.Entity<etMovimientoInventario>(e =>
+        {
+            e.HasOne(m => m.Sku)
+                .WithMany()
+                .HasForeignKey(m => m.IdSku)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // ── etVariante → Producto y Combinación de Color ──
         b.Entity<etVariante>(e =>
         {
@@ -243,6 +254,19 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
             e.HasOne(v => v.Producto)
                 .WithMany()
                 .HasForeignKey(v => v.IdProducto)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(v => v.Variante)
+                .WithMany()
+                .HasForeignKey(v => v.IdVariante)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(v => v.Sku)
+                .WithMany()
+                .HasForeignKey(v => v.IdSku)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
@@ -295,6 +319,44 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        // ── etPedido ──
+        b.Entity<etPedido>(e =>
+        {
+            e.HasOne(p => p.Cliente)
+                .WithMany(c => c.Pedidos)
+                .HasForeignKey(p => p.IdCliente)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(p => p.UsuarioCaptura)
+                .WithMany()
+                .HasForeignKey(p => p.IdUsuarioCaptura)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(p => p.DireccionEnvio)
+                .WithMany()
+                .HasForeignKey(p => p.IdDireccionEnvio)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(p => p.Politica)
+                .WithMany()
+                .HasForeignKey(p => p.IdPolitica)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ── etLineaPedido ──
+        b.Entity<etLineaPedido>(e =>
+        {
+            e.HasOne(l => l.Pedido)
+                .WithMany(p => p.Lineas)
+                .HasForeignKey(l => l.IdPedido)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(l => l.Sku)
+                .WithMany()
+                .HasForeignKey(l => l.IdSku)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         // ── etHistorialPedido ──
         b.Entity<etHistorialPedido>(e =>
         {
@@ -306,6 +368,16 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
             e.HasOne(h => h.Usuario)
                 .WithMany(u => u.HistorialPedidos)
                 .HasForeignKey(h => h.IdUsuario)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(h => h.EstatusAnterior)
+                .WithMany()
+                .HasForeignKey(h => h.IdElemEstatusAnterior)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(h => h.EstatusNuevo)
+                .WithMany()
+                .HasForeignKey(h => h.IdElemEstatusNuevo)
                 .OnDelete(DeleteBehavior.Restrict);
         });
     }
@@ -361,6 +433,7 @@ public class AppDbContext : IdentityDbContext<etUsuario, IdentityRole<Guid>, Gui
 
             // Identity (prefijo et_)
             [typeof(etEmpleado)]          = "et_empleado",
+            [typeof(etMovimientoInventario)] = "et_movimiento_inventario",
             // etUsuario → NO se mapea aquí, ASP.NET Identity controla su tabla (AspNetUsers)
         };
 

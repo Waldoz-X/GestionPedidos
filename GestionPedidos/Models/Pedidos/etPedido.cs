@@ -14,12 +14,13 @@ public class etPedido
     public Guid? IdPolitica { get; set; }
     public string ClFolio { get; set; } = null!;
     public string ClEstatusPedido { get; set; } = null!;
-    public Moneda ClMoneda { get; set; }
+    public Moneda ClMoneda { get; set; } = null!;
     public decimal MnSubtotal { get; set; }
     public decimal MnDescuentoComercial { get; set; }
     public decimal MnDescuentoAdmin { get; set; }
     public decimal MnTotal { get; set; }
     public DateTimeOffset FePedido { get; set; }
+    public DateTimeOffset? FeExpiracion { get; set; }
 
     // Auditoría
     public required string ClOperadorCrea { get; set; }

@@ -13,10 +13,10 @@ public interface ISkuService
     Task<SkuDto> CrearAsync(SkuCreateDto dto, string userEmail);
     Task<SkuDto?> ActualizarAsync(Guid idSku, SkuUpdateDto dto, string userEmail);
     Task<bool> EliminarAsync(Guid idSku);
-    Task<IEnumerable<SkuCatalogoDto>> ObtenerTodosCatalogoAsync(Guid? idVariante, Guid? idProducto, bool? activo, bool? soloConStock);
+    Task<IEnumerable<SkuCatalogoDto>> ObtenerTodosCatalogoAsync(Guid? idVariante, Guid? idProducto, bool? activo, bool? soloConStock, Guid? idCliente = null);
 }
 
-public class SkuService(AppDbContext dbContext) : ISkuService
+public class SkuService(AppDbContext dbContext, IVisibilidadService visibilidadService) : ISkuService
 {
     public async Task<IEnumerable<SkuDto>> ObtenerTodosAsync()
     {
@@ -27,13 +27,13 @@ public class SkuService(AppDbContext dbContext) : ISkuService
         return skus.Select(MapToDto);
     }
 
-    public async Task<IEnumerable<SkuCatalogoDto>> ObtenerTodosCatalogoAsync(Guid? idVariante, Guid? idProducto, bool? activo, bool? soloConStock)
+    public async Task<IEnumerable<SkuCatalogoDto>> ObtenerTodosCatalogoAsync(Guid? idVariante, Guid? idProducto, bool? activo, bool? soloConStock, Guid? idCliente = null)
     {
         var query = dbContext.Skus
             .Include(s => s.Variante)
                 .ThenInclude(v => v.Producto)
             .Include(s => s.Talla)
-                .ThenInclude(t => t.ElementoPadre)
+                .ThenInclude(t => t!.ElementoPadre)
             .AsQueryable();
 
         if (idVariante.HasValue)
@@ -58,6 +58,16 @@ public class SkuService(AppDbContext dbContext) : ISkuService
         }
 
         var results = await query.AsNoTracking().ToListAsync();
+
+        if (idCliente.HasValue && results.Any())
+        {
+            var skuIds = results.Select(s => s.IdSku).ToList();
+            var varIds = results.Select(s => s.IdVariante).ToList();
+            var prodIds = results.Select(s => s.Variante!.IdProducto).ToList();
+
+            var accesoSkus = await visibilidadService.EvaluarAccesoSkusMasivoAsync(idCliente.Value, prodIds, varIds, skuIds);
+            results = results.Where(s => accesoSkus.TryGetValue(s.IdSku, out var acceso) && acceso).ToList();
+        }
 
         return results.Select(s => new SkuCatalogoDto(
             s.IdSku,

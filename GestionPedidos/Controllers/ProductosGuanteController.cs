@@ -20,14 +20,32 @@ public class ProductosGuanteController(IProductoGuanteService service) : Control
     [HttpGet("catalogo")]
     public async Task<IActionResult> GetCatalogoPaginado([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
-        var result = await service.ObtenerCatalogoPaginadoAsync(page, pageSize);
+        Guid? idCliente = null;
+        if (User.IsInRole("CLIENTE"))
+        {
+            var idClaim = User.FindFirst("idCliente")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.UserData)?.Value;
+            if (!string.IsNullOrEmpty(idClaim) && Guid.TryParse(idClaim, out var parsedId))
+            {
+                idCliente = parsedId;
+            }
+        }
+        var result = await service.ObtenerCatalogoPaginadoAsync(page, pageSize, idCliente);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var guante = await service.ObtenerPorIdAsync(id);
+        Guid? idCliente = null;
+        if (User.IsInRole("CLIENTE"))
+        {
+            var idClaim = User.FindFirst("idCliente")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.UserData)?.Value;
+            if (!string.IsNullOrEmpty(idClaim) && Guid.TryParse(idClaim, out var parsedId))
+            {
+                idCliente = parsedId;
+            }
+        }
+        var guante = await service.ObtenerPorIdAsync(id, idCliente);
         if (guante == null) return NotFound();
         return Ok(guante);
     }

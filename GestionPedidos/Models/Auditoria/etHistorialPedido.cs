@@ -8,8 +8,12 @@ public class etHistorialPedido
 {
     public Guid Id { get; set; }
     public Guid IdPedido { get; set; }
+    public int? IdElemEstatusAnterior { get; set; }
     public EstatusPedido? EstatusAnterior { get; set; }
-    public EstatusPedido EstatusNuevo { get; set; }
+    
+    public int IdElemEstatusNuevo { get; set; }
+    public EstatusPedido EstatusNuevo { get; set; } = null!;
+    
     public Guid IdUsuario { get; set; }
     public string? Notas { get; set; }
     public DateTimeOffset RegistradoEn { get; set; } = DateTimeOffset.UtcNow;

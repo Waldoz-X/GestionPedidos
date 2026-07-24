@@ -4,6 +4,7 @@ using GestionPedidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GestionPedidos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260713183558_AddMovimientoInventarioKardex")]
+    partial class AddMovimientoInventarioKardex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -844,10 +847,6 @@ namespace GestionPedidos.Migrations
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("fe_creacion");
 
-                    b.Property<DateTimeOffset?>("FeExpiracion")
-                        .HasColumnType("datetimeoffset")
-                        .HasColumnName("fe_expiracion");
-
                     b.Property<DateTimeOffset?>("FeModificacion")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("fe_modificacion");
@@ -1449,10 +1448,6 @@ namespace GestionPedidos.Migrations
                     b.Property<int>("NoStockDisponible")
                         .HasColumnType("int")
                         .HasColumnName("no_stock_disponible");
-
-                    b.Property<int>("NoStockMinimo")
-                        .HasColumnType("int")
-                        .HasColumnName("no_stock_minimo");
 
                     b.Property<int>("NoStockReservado")
                         .HasColumnType("int")

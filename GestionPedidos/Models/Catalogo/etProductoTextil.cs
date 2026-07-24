@@ -11,7 +11,7 @@ public class etProductoTextil
     public string? DsComposicion { get; set; }
     public string? DsCorte { get; set; }
     public int? NoGramajeGsm { get; set; }
-    public Genero ClGenero { get; set; }
+    public Genero ClGenero { get; set; } = null!;
     // ✅ ClTipoMedida movido a etProducto (base)
 
     // ── Navegación ──

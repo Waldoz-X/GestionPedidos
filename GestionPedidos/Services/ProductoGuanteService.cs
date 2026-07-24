@@ -11,15 +11,15 @@ namespace GestionPedidos.Services;
 public interface IProductoGuanteService
 {
     Task<IEnumerable<ProductoGuanteDto>> ObtenerTodosAsync();
-    Task<GestionPedidos.Contracts.Common.PagedResult<GuanteCatalogoDto>> ObtenerCatalogoPaginadoAsync(int page, int pageSize);
-    Task<ProductoGuanteDto?> ObtenerPorIdAsync(Guid idProducto);
+    Task<GestionPedidos.Contracts.Common.PagedResult<GuanteCatalogoDto>> ObtenerCatalogoPaginadoAsync(int page, int pageSize, Guid? idCliente = null);
+    Task<ProductoGuanteDto?> ObtenerPorIdAsync(Guid idProducto, Guid? idCliente = null);
     Task<ProductoGuanteDto> CrearAsync(ProductoGuanteCreateDto dto, string userEmail);
     Task<ProductoGuanteDto?> ActualizarAsync(Guid idProducto, ProductoGuanteUpdateDto dto, string userEmail);
     Task<bool> EliminarAsync(Guid idProducto);
     Task<int> CrearMasivoAsync(IEnumerable<ProductoGuanteBulkDto> dtos, string userEmail);
 }
 
-public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteService
+public class ProductoGuanteService(AppDbContext dbContext, IVisibilidadService visibilidadService) : IProductoGuanteService
 {
     public async Task<IEnumerable<ProductoGuanteDto>> ObtenerTodosAsync()
     {
@@ -33,7 +33,7 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
         return guantes.Select(MapToDto);
     }
 
-    public async Task<GestionPedidos.Contracts.Common.PagedResult<GuanteCatalogoDto>> ObtenerCatalogoPaginadoAsync(int page, int pageSize)
+    public async Task<GestionPedidos.Contracts.Common.PagedResult<GuanteCatalogoDto>> ObtenerCatalogoPaginadoAsync(int page, int pageSize, Guid? idCliente = null)
     {
         var query = dbContext.Variantes
             .Include(v => v.Producto).ThenInclude(p => p.Categoria)
@@ -43,16 +43,60 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
             .Where(v => v.Producto.Categoria.Catalogo.ClCatalogo == "DIVISIONES")
             // Assuming Guantes are in a specific category or we just return all Variantes
             // If there are other products, we could filter by v.Producto.ProductosGuante.Any()
-            .Where(v => dbContext.ProductosGuante.Any(g => g.IdProducto == v.IdProducto))
-            .AsNoTracking();
+            .Where(v => dbContext.ProductosGuante.Any(g => g.IdProducto == v.IdProducto));
 
-        int totalCount = await query.CountAsync();
+        List<etVariante> variantes = new();
+        int totalCount = 0;
 
-        var variantes = await query
-            .OrderByDescending(v => v.FeCreacion)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        if (idCliente.HasValue)
+        {
+            var allSkus = await query.SelectMany(v => v.Skus)
+                .Select(s => new { s.IdSku, s.IdVariante, IdProducto = s.Variante.IdProducto, s.Variante.FeCreacion })
+                .ToListAsync();
+
+            var skuIds = allSkus.Select(s => s.IdSku);
+            var varIds = allSkus.Select(s => s.IdVariante);
+            var prodIds = allSkus.Select(s => s.IdProducto);
+
+            var accesoSkus = await visibilidadService.EvaluarAccesoSkusMasivoAsync(idCliente.Value, prodIds, varIds, skuIds);
+            var skusVisibles = accesoSkus.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
+
+            var variantesConSkusVisibles = allSkus
+                .Where(s => skusVisibles.Contains(s.IdSku))
+                .GroupBy(s => s.IdVariante)
+                .Select(g => new { IdVariante = g.Key, FeCreacion = g.First().FeCreacion })
+                .OrderByDescending(x => x.FeCreacion)
+                .Select(x => x.IdVariante)
+                .ToList();
+
+            totalCount = variantesConSkusVisibles.Count;
+
+            var idsPagina = variantesConSkusVisibles
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            variantes = await query
+                .Where(v => idsPagina.Contains(v.IdVariante))
+                .OrderByDescending(v => v.FeCreacion)
+                .ToListAsync();
+
+            // Filtrar en memoria los SKUs que no son visibles
+            foreach (var v in variantes)
+            {
+                v.Skus = v.Skus.Where(s => skusVisibles.Contains(s.IdSku)).ToList();
+            }
+        }
+        else
+        {
+            totalCount = await query.CountAsync();
+
+            variantes = await query
+                .OrderByDescending(v => v.FeCreacion)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
 
         var items = variantes.Select(v => new GuanteCatalogoDto(
             IdProducto: v.IdProducto,
@@ -73,7 +117,7 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
         return new GestionPedidos.Contracts.Common.PagedResult<GuanteCatalogoDto>(items, totalCount, page, pageSize);
     }
 
-    public async Task<ProductoGuanteDto?> ObtenerPorIdAsync(Guid idProducto)
+    public async Task<ProductoGuanteDto?> ObtenerPorIdAsync(Guid idProducto, Guid? idCliente = null)
     {
         var guante = await dbContext.ProductosGuante
             .Include(g => g.Producto)
@@ -82,7 +126,39 @@ public class ProductoGuanteService(AppDbContext dbContext) : IProductoGuanteServ
             .AsNoTracking()
             .FirstOrDefaultAsync(g => g.IdProducto == idProducto);
 
-        return guante == null ? null : MapToDto(guante);
+        if (guante == null) return null;
+
+        if (idCliente.HasValue)
+        {
+            var allSkus = guante.Producto.Variantes.SelectMany(v => v.Skus).ToList();
+            if (allSkus.Any())
+            {
+                var skuIds = allSkus.Select(s => s.IdSku).ToList();
+                var varIds = allSkus.Select(s => s.IdVariante).ToList();
+                var prodIds = allSkus.Select(s => s.Variante.IdProducto).ToList();
+
+                var accesoSkus = await visibilidadService.EvaluarAccesoSkusMasivoAsync(idCliente.Value, prodIds, varIds, skuIds);
+                var skusVisibles = accesoSkus.Where(kvp => kvp.Value).Select(kvp => kvp.Key).ToHashSet();
+
+                var variantesFiltradas = new List<etVariante>();
+                foreach (var v in guante.Producto.Variantes)
+                {
+                    v.Skus = v.Skus.Where(s => skusVisibles.Contains(s.IdSku)).ToList();
+                    if (v.Skus.Any())
+                    {
+                        variantesFiltradas.Add(v);
+                    }
+                }
+                guante.Producto.Variantes = variantesFiltradas;
+            }
+            else
+            {
+                // Si no tiene SKUs en absoluto, no mostramos variantes
+                guante.Producto.Variantes = new List<etVariante>();
+            }
+        }
+
+        return MapToDto(guante);
     }
 
     public async Task<ProductoGuanteDto> CrearAsync(ProductoGuanteCreateDto dto, string userEmail)

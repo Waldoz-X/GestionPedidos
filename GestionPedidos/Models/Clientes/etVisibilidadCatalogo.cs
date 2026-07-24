@@ -6,8 +6,14 @@ namespace GestionPedidos.Models;
 /// </summary>
 public class etVisibilidadCatalogo
 {
+    public Guid IdVisibilidad { get; set; }
     public Guid IdCliente { get; set; }
-    public Guid IdProducto { get; set; }
+    
+    // Jerarquía de visibilidad (todos opcionales, pero al menos uno debe estar presente lógicamente)
+    public Guid? IdProducto { get; set; }
+    public Guid? IdVariante { get; set; }
+    public Guid? IdSku { get; set; }
+    
     public string ClTipoAcceso { get; set; } = null!;
     public string ClEstatusVisibilidad { get; set; } = "ACTIVO";
 
@@ -21,5 +27,7 @@ public class etVisibilidadCatalogo
 
     // ── Navegación ──
     public Cliente Cliente { get; set; } = null!;
-    public Producto Producto { get; set; } = null!;
+    public Producto? Producto { get; set; }
+    public etVariante? Variante { get; set; }
+    public etSku? Sku { get; set; }
 }

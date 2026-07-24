@@ -28,6 +28,7 @@ public class etSku
     // --- Inventario ---
     public int NoStockDisponible { get; set; } = 0;
     public int NoStockReservado { get; set; } = 0;
+    public int NoStockMinimo { get; set; } = 10;
     // StockNeto = NoStockDisponible - NoStockReservado
 
     // Auditoría

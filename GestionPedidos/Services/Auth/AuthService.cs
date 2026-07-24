@@ -1,4 +1,5 @@
 using System;
+using System.Security.Claims;
 using GestionPedidos.Contracts.Auth;
 using GestionPedidos.Data;
 using GestionPedidos.Models;
@@ -38,7 +39,7 @@ public class AuthService : IAuthService
             var usuario = await _userManager.FindByEmailAsync(request.Email);
             if (usuario == null)
             {
-                return new AuthResponse(false, "Email o contraseÒa inv·lidos", null, new[] { "Usuario no encontrado" });
+                return new AuthResponse(false, "Email o contrase√±a inv√°lidos", null, new[] { "Usuario no encontrado" });
             }
             if (usuario.ClEstatusUsuario != "ACTIVO")
             {
@@ -46,19 +47,39 @@ public class AuthService : IAuthService
             }
             if (!await _userManager.CheckPasswordAsync(usuario, request.Password))
             {
-                return new AuthResponse(false, "Email o contraseÒa inv·lidos", null, new[] { "ContraseÒa incorrecta" });
+                return new AuthResponse(false, "Email o contrase√±a inv√°lidos", null, new[] { "Contrase√±a incorrecta" });
             }
 
             var roles = await _userManager.GetRolesAsync(usuario);
             var empleado = await _context.Set<Empleado>().FirstOrDefaultAsync(e => e.IdUsuario == usuario.Id);
 
-            // Permitir si es empleado explÌcito o tiene roles administrativos
+            // Permitir si es empleado expl√≠cito o tiene roles administrativos
             if (empleado == null && !roles.Any(r => r == "Admin" || r == "Manager" || r == "User"))
             {
-                return new AuthResponse(false, "Acceso denegado", null, new[] { "El usuario no tiene privilegios de administraciÛn" });
+                return new AuthResponse(false, "Acceso denegado", null, new[] { "El usuario no tiene privilegios de administraci√≥n" });
             }
 
-            var token = _tokenService.GenerateToken(usuario, roles);
+            // Obtener claims del usuario y de sus roles
+            var claimsUsuario = await _userManager.GetClaimsAsync(usuario);
+            var claimsRoles = new List<Claim>();
+            foreach (var roleName in roles)
+            {
+                var role = await _roleManager.FindByNameAsync(roleName);
+                if (role != null)
+                {
+                    var claimsDeRol = await _roleManager.GetClaimsAsync(role);
+                    claimsRoles.AddRange(claimsDeRol);
+                }
+            }
+
+            var todosLosClaims = claimsUsuario.Concat(claimsRoles).ToList();
+            var permisos = todosLosClaims
+                .Where(c => c.Type == "permission")
+                .Select(c => c.Value)
+                .Distinct()
+                .ToList();
+
+            var token = _tokenService.GenerateToken(usuario, roles, todosLosClaims);
             var loginResponse = new LoginResponse
             {
                 IdUsuario = usuario.Id,
@@ -69,7 +90,8 @@ public class AuthService : IAuthService
                 IdEmpleado = empleado?.IdEmpleado,
                 IdCliente = null,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(60),
-                Roles = roles.ToList()
+                Roles = roles.ToList(),
+                Permissions = permisos
             };
             return new AuthResponse(true, "Login exitoso", loginResponse);
         }
@@ -87,7 +109,7 @@ public class AuthService : IAuthService
             var usuario = await _userManager.FindByEmailAsync(request.Email);
             if (usuario == null)
             {
-                return new AuthResponse(false, "Email o contraseÒa inv·lidos", null, new[] { "Usuario no encontrado" });
+                return new AuthResponse(false, "Email o contrase√±a inv√°lidos", null, new[] { "Usuario no encontrado" });
             }
             if (usuario.ClEstatusUsuario != "ACTIVO")
             {
@@ -95,16 +117,41 @@ public class AuthService : IAuthService
             }
             if (!await _userManager.CheckPasswordAsync(usuario, request.Password))
             {
-                return new AuthResponse(false, "Email o contraseÒa inv·lidos", null, new[] { "ContraseÒa incorrecta" });
+                return new AuthResponse(false, "Email o contrase√±a inv√°lidos", null, new[] { "Contrase√±a incorrecta" });
             }
 
             var roles = await _userManager.GetRolesAsync(usuario);
-            if (!roles.Contains("CLIENTE") && usuario.IdCliente == null)
+            var rolesList = roles.ToList();
+            if (!rolesList.Contains("CLIENTE") && usuario.IdCliente != null)
+            {
+                rolesList.Add("CLIENTE");
+            }
+            else if (!rolesList.Contains("CLIENTE") && usuario.IdCliente == null)
             {
                 return new AuthResponse(false, "Acceso denegado", null, new[] { "El usuario no es un cliente" });
             }
 
-            var token = _tokenService.GenerateToken(usuario, roles);
+            // Obtener claims del usuario y de sus roles
+            var claimsUsuario = await _userManager.GetClaimsAsync(usuario);
+            var claimsRoles = new List<Claim>();
+            foreach (var roleName in rolesList)
+            {
+                var role = await _roleManager.FindByNameAsync(roleName);
+                if (role != null)
+                {
+                    var claimsDeRol = await _roleManager.GetClaimsAsync(role);
+                    claimsRoles.AddRange(claimsDeRol);
+                }
+            }
+
+            var todosLosClaims = claimsUsuario.Concat(claimsRoles).ToList();
+            var permisos = todosLosClaims
+                .Where(c => c.Type == "permission")
+                .Select(c => c.Value)
+                .Distinct()
+                .ToList();
+
+            var token = _tokenService.GenerateToken(usuario, rolesList, todosLosClaims);
             var loginResponse = new LoginResponse
             {
                 IdUsuario = usuario.Id,
@@ -115,7 +162,8 @@ public class AuthService : IAuthService
                 IdEmpleado = null,
                 IdCliente = usuario.IdCliente,
                 ExpiresAt = DateTime.UtcNow.AddMinutes(60),
-                Roles = roles.ToList()
+                Roles = rolesList,
+                Permissions = permisos
             };
             return new AuthResponse(true, "Login exitoso", loginResponse);
         }
@@ -129,7 +177,7 @@ public class AuthService : IAuthService
     {
         try
         {
-            // Validar que las contraseÒas coincidan
+            // Validar que las contrase√±as coincidan
             if (request.Password != request.ConfirmPassword)
             {
                 return new AuthResponse(false, "Los passwords no coinciden", null,
@@ -140,7 +188,7 @@ public class AuthService : IAuthService
             var usuarioExistente = await _userManager.FindByEmailAsync(request.Email);
             if (usuarioExistente != null)
             {
-                return new AuthResponse(false, "El email ya est· registrado", null,
+                return new AuthResponse(false, "El email ya est√° registrado", null,
                     new[] { "Este email ya tiene una cuenta" });
             }
 
@@ -152,7 +200,7 @@ public class AuthService : IAuthService
                 ClTipoCliente = request.ClTipoCliente,
                 IdElemMoneda = int.TryParse(request.ClMonedaIdCatalogo, out var monedaId) 
                     ? monedaId 
-                    : throw new InvalidOperationException("MonedaId inv·lida"),
+                    : throw new InvalidOperationException("MonedaId inv√°lida"),
                 MnLimiteCredito = 0,
                 ClEstatusCliente = "ACTIVO",
                 ClOperadorCrea = "REGISTRO_CLIENTE",
@@ -165,7 +213,7 @@ public class AuthService : IAuthService
                 Id = Guid.NewGuid(),
                 Email = request.Email,
                 UserName = request.Email,
-                EmailConfirmed = false, // En producciÛn enviar email de confirmaciÛn
+                EmailConfirmed = false, // En producci√≥n enviar email de confirmaci√≥n
                 ClEstatusUsuario = "ACTIVO",
                 IdCliente = cliente.IdCliente,
                 FeCreacion = DateTimeOffset.UtcNow
@@ -217,7 +265,7 @@ public class AuthService : IAuthService
     {
         try
         {
-            // Validar que las contraseÒas coincidan
+            // Validar que las contrase√±as coincidan
             if (request.NewPassword != request.ConfirmNewPassword)
             {
                 return new AuthResponse(false, "Los passwords no coinciden", null,
@@ -240,15 +288,15 @@ public class AuthService : IAuthService
 
             if (!result.Succeeded)
             {
-                return new AuthResponse(false, "Error al cambiar la contraseÒa", null,
+                return new AuthResponse(false, "Error al cambiar la contrase√±a", null,
                     result.Errors.Select(e => e.Description).ToArray());
             }
 
-            return new AuthResponse(true, "ContraseÒa cambiada exitosamente");
+            return new AuthResponse(true, "Contrase√±a cambiada exitosamente");
         }
         catch (Exception ex)
         {
-            return new AuthResponse(false, "Error durante el cambio de contraseÒa", null,
+            return new AuthResponse(false, "Error durante el cambio de contrase√±a", null,
                 new[] { ex.Message });
         }
     }
@@ -278,7 +326,7 @@ public class AuthService : IAuthService
                     ClEmpleado: empleado.ClEmpleado,
                     NbEmpleado: empleado.NbEmpleado,
                     NbApellidos: empleado.NbApellidos,
-                    Area: empleado.Area?.NbCatalogoElemento ?? "Sin ·rea"
+                    Area: empleado.Area?.NbCatalogoElemento ?? "Sin √°rea"
                 );
             }
 
@@ -329,7 +377,7 @@ public class AuthService : IAuthService
     {
         // Con JWT stateless no se necesita hacer nada en servidor
         // El cliente simplemente descarta el token
-        // Si implementaras token blacklist, aquÌ lo harÌa
+        // Si implementaras token blacklist, aqu√≠ lo har√≠a
         await Task.CompletedTask;
     }
 }

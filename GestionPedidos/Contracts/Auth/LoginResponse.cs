@@ -14,4 +14,5 @@ public sealed record LoginResponse
     public Guid? IdCliente { get; init; }   // null si es empleado
     public DateTime ExpiresAt { get; init; }
     public IReadOnlyList<string> Roles { get; init; } = [];
+    public IReadOnlyList<string> Permissions { get; init; } = [];
 }

@@ -4,6 +4,7 @@ using GestionPedidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GestionPedidos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260710200006_UpdateVisibilidadCatalogoHierarchy")]
+    partial class UpdateVisibilidadCatalogoHierarchy
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -764,52 +767,6 @@ namespace GestionPedidos.Migrations
                     b.ToTable("et_linea_pedido");
                 });
 
-            modelBuilder.Entity("GestionPedidos.Models.etMovimientoInventario", b =>
-                {
-                    b.Property<Guid>("IdMovimiento")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id_movimiento");
-
-                    b.Property<string>("ClOperadorCrea")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("cl_operador_crea");
-
-                    b.Property<string>("ClTipoMovimiento")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("cl_tipo_movimiento");
-
-                    b.Property<string>("DsMotivo")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("ds_motivo");
-
-                    b.Property<DateTimeOffset>("FeCreacion")
-                        .HasColumnType("datetimeoffset")
-                        .HasColumnName("fe_creacion");
-
-                    b.Property<Guid>("IdSku")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id_sku");
-
-                    b.Property<string>("NbArtefactoCrea")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("nb_artefacto_crea");
-
-                    b.Property<int>("NoCantidad")
-                        .HasColumnType("int")
-                        .HasColumnName("no_cantidad");
-
-                    b.HasKey("IdMovimiento");
-
-                    b.HasIndex("IdSku")
-                        .HasDatabaseName("ix_et_movimiento_inventario_id_sku");
-
-                    b.ToTable("et_movimiento_inventario");
-                });
-
             modelBuilder.Entity("GestionPedidos.Models.etPedido", b =>
                 {
                     b.Property<Guid>("IdPedido")
@@ -843,10 +800,6 @@ namespace GestionPedidos.Migrations
                     b.Property<DateTimeOffset>("FeCreacion")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("fe_creacion");
-
-                    b.Property<DateTimeOffset?>("FeExpiracion")
-                        .HasColumnType("datetimeoffset")
-                        .HasColumnName("fe_expiracion");
 
                     b.Property<DateTimeOffset?>("FeModificacion")
                         .HasColumnType("datetimeoffset")
@@ -1449,10 +1402,6 @@ namespace GestionPedidos.Migrations
                     b.Property<int>("NoStockDisponible")
                         .HasColumnType("int")
                         .HasColumnName("no_stock_disponible");
-
-                    b.Property<int>("NoStockMinimo")
-                        .HasColumnType("int")
-                        .HasColumnName("no_stock_minimo");
 
                     b.Property<int>("NoStockReservado")
                         .HasColumnType("int")
@@ -2061,18 +2010,6 @@ namespace GestionPedidos.Migrations
                         .HasConstraintName("fk_et_linea_pedido_skus_et_sku_id_sku");
 
                     b.Navigation("Pedido");
-
-                    b.Navigation("Sku");
-                });
-
-            modelBuilder.Entity("GestionPedidos.Models.etMovimientoInventario", b =>
-                {
-                    b.HasOne("GestionPedidos.Models.etSku", "Sku")
-                        .WithMany()
-                        .HasForeignKey("IdSku")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_et_movimiento_inventario_skus_id_sku");
 
                     b.Navigation("Sku");
                 });

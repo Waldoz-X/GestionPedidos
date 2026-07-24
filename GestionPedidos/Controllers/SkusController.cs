@@ -24,7 +24,16 @@ public class SkusController(ISkuService service) : ControllerBase
         [FromQuery] bool? activo,
         [FromQuery] bool? soloConStock)
     {
-        var skus = await service.ObtenerTodosCatalogoAsync(idVariante, idProducto, activo, soloConStock);
+        Guid? idCliente = null;
+        if (User.IsInRole("CLIENTE"))
+        {
+            var idClaim = User.FindFirst("idCliente")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.UserData)?.Value;
+            if (!string.IsNullOrEmpty(idClaim) && Guid.TryParse(idClaim, out var parsedId))
+            {
+                idCliente = parsedId;
+            }
+        }
+        var skus = await service.ObtenerTodosCatalogoAsync(idVariante, idProducto, activo, soloConStock, idCliente);
         return Ok(skus);
     }
 

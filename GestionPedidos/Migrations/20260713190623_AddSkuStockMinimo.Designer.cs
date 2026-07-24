@@ -4,6 +4,7 @@ using GestionPedidos.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GestionPedidos.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260713190623_AddSkuStockMinimo")]
+    partial class AddSkuStockMinimo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -843,10 +846,6 @@ namespace GestionPedidos.Migrations
                     b.Property<DateTimeOffset>("FeCreacion")
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("fe_creacion");
-
-                    b.Property<DateTimeOffset?>("FeExpiracion")
-                        .HasColumnType("datetimeoffset")
-                        .HasColumnName("fe_expiracion");
 
                     b.Property<DateTimeOffset?>("FeModificacion")
                         .HasColumnType("datetimeoffset")

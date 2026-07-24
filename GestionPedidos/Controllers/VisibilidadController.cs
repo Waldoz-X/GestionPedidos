@@ -59,9 +59,16 @@ public class VisibilidadController(IVisibilidadService service) : ControllerBase
         if (!validos.Contains(dto.ClTipoAcceso.ToUpperInvariant()))
             return BadRequest(new { message = $"ClTipoAcceso inválido. Valores válidos: {string.Join(", ", validos)}" });
 
-        var userEmail = User.Identity?.Name ?? "Admin";
-        var visibilidad = await service.AsignarVisibilidadAsync(dto, userEmail);
-        return Ok(visibilidad);
+        try
+        {
+            var userEmail = User.Identity?.Name ?? "Admin";
+            var visibilidad = await service.AsignarVisibilidadAsync(dto, userEmail);
+            return Ok(visibilidad);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -99,6 +106,21 @@ public class VisibilidadController(IVisibilidadService service) : ControllerBase
         var eliminado = await service.RevocarVisibilidadAsync(idCliente, idProducto);
         if (!eliminado)
             return NotFound(new { message = "No existe registro de visibilidad para este cliente y producto." });
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Revoca una regla de visibilidad por su ID único.
+    /// Solo Admin.
+    /// </summary>
+    [HttpDelete("{idVisibilidad:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RevocarVisibilidadPorId(Guid idVisibilidad)
+    {
+        var eliminado = await service.RevocarVisibilidadPorIdAsync(idVisibilidad);
+        if (!eliminado)
+            return NotFound(new { message = "No existe el registro de visibilidad indicado." });
 
         return NoContent();
     }

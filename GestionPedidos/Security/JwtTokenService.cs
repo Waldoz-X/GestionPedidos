@@ -1,4 +1,4 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using GestionPedidos.Models;
@@ -16,7 +16,7 @@ public sealed class JwtTokenService : IJwtTokenService
         _jwtOptions = jwtOptions.Value;
     }
 
-    public string GenerateToken(etUsuario usuario, IEnumerable<string> roles)
+    public string GenerateToken(etUsuario usuario, IEnumerable<string> roles, IEnumerable<Claim>? customClaims = null)
     {
         var claims = new List<Claim>
         {
@@ -26,9 +26,20 @@ public sealed class JwtTokenService : IJwtTokenService
             new(ClaimTypes.Name, usuario.UserName ?? usuario.Email ?? string.Empty)
         };
 
+        if (usuario.IdCliente.HasValue && usuario.IdCliente.Value != Guid.Empty)
+        {
+            claims.Add(new Claim("idCliente", usuario.IdCliente.Value.ToString()));
+            claims.Add(new Claim(ClaimTypes.UserData, usuario.IdCliente.Value.ToString()));
+        }
+
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+
+        if (customClaims != null)
+        {
+            claims.AddRange(customClaims);
         }
 
         var credentials = new SigningCredentials(

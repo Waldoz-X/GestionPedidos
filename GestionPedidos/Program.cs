@@ -21,7 +21,6 @@ using CloudinaryDotNet;
 
 var builder = WebApplication.CreateBuilder(args);
 const string localDevCorsPolicy = "LocalDevCorsPolicy";
-const int fixedHttpsPort = 7140;
 
 // ── EF Core + SQL Server ──
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -132,6 +131,9 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IPrecioService, PrecioService>();
 builder.Services.AddScoped<IVisibilidadService, VisibilidadService>();
 builder.Services.AddScoped<IPoliticaService, PoliticaService>();
+builder.Services.AddScoped<IPedidoService, PedidoService>();
+builder.Services.AddScoped<IInventarioService, InventarioService>();
+builder.Services.AddHostedService<GestionPedidos.Services.Workers.LiberadorPedidosExpiradosWorker>();
 
 // ── Cloudinary Configuration ──
 var cloudinaryConfig = builder.Configuration.GetSection("Cloudinary");
@@ -169,8 +171,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseCors(localDevCorsPolicy);
+app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using GestionPedidos.Models;
 using GestionPedidos.Models.Catalogo;
 using Microsoft.AspNetCore.Identity;
@@ -15,6 +16,7 @@ public static class DbSeeder
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
         await context.Database.MigrateAsync();
+        await context.Database.ExecuteSqlRawAsync("UPDATE et_sku SET no_stock_minimo = 10 WHERE no_stock_minimo = 0");
 
         await SeedRolesAsync(roleManager);
         await SeedAdminUserAsync(userManager);
@@ -30,6 +32,40 @@ public static class DbSeeder
             if (!await roleManager.RoleExistsAsync(role))
             {
                 await roleManager.CreateAsync(new IdentityRole<Guid>(role));
+            }
+        }
+
+        // Sembrar Claims de Permisos para Roles
+        await SeedRoleClaimsAsync(roleManager, "Admin", new[]
+        {
+            "ver:pedidos", "ver:inventario", "ver:catalogos", "ver:clientes", 
+            "ver:empleados", "ver:politicas", "ver:precios", "ver:visibilidad", 
+            "ver:usuarios", "ver:asignaciones", "ver:productos"
+        });
+
+        await SeedRoleClaimsAsync(roleManager, "Manager", new[]
+        {
+            "ver:pedidos", "ver:inventario", "ver:catalogos", "ver:clientes", 
+            "ver:precios", "ver:productos"
+        });
+
+        await SeedRoleClaimsAsync(roleManager, "EMPLEADO", new[]
+        {
+            "ver:pedidos", "ver:inventario", "ver:catalogos"
+        });
+    }
+
+    private static async Task SeedRoleClaimsAsync(RoleManager<IdentityRole<Guid>> roleManager, string roleName, string[] permissions)
+    {
+        var role = await roleManager.FindByNameAsync(roleName);
+        if (role == null) return;
+
+        var existingClaims = await roleManager.GetClaimsAsync(role);
+        foreach (var permission in permissions)
+        {
+            if (!existingClaims.Any(c => c.Type == "permission" && c.Value == permission))
+            {
+                await roleManager.AddClaimAsync(role, new Claim("permission", permission));
             }
         }
     }
@@ -104,6 +140,45 @@ public static class DbSeeder
                     CrearElemento(elMochilaExistente.IdCatalogo, "CROSSBODY", "Crossbody", elMochilaExistente.IdCatalogoElemento, operador, fecha)
                 );
                 await context.SaveChangesAsync();
+            }
+        }
+
+        if (!await context.CCatalogos.AnyAsync(c => c.ClCatalogo == "ESTATUS_PEDIDO"))
+        {
+            var catEstatusPedido = CrearCatalogo("ESTATUS_PEDIDO", "Estatus de Pedido", "Ciclo de vida de los pedidos", operador, fecha);
+            context.CCatalogos.Add(catEstatusPedido);
+            await context.SaveChangesAsync();
+
+            context.CCatalogoElementos.AddRange(
+                CrearElemento(catEstatusPedido.IdCatalogo, "BORRADOR", "Borrador", null, operador, fecha),
+                CrearElemento(catEstatusPedido.IdCatalogo, "CONFIRMADO", "Confirmado", null, operador, fecha),
+                CrearElemento(catEstatusPedido.IdCatalogo, "FACTURADO", "Facturado", null, operador, fecha),
+                CrearElemento(catEstatusPedido.IdCatalogo, "ENVIADO", "Enviado", null, operador, fecha),
+                CrearElemento(catEstatusPedido.IdCatalogo, "CANCELADO", "Cancelado", null, operador, fecha),
+                CrearElemento(catEstatusPedido.IdCatalogo, "EXPIRADO", "Expirado", null, operador, fecha)
+            );
+            await context.SaveChangesAsync();
+        }
+        else
+        {
+            var catEstatusPedido = await context.CCatalogos.FirstOrDefaultAsync(c => c.ClCatalogo == "ESTATUS_PEDIDO");
+            if (catEstatusPedido != null)
+            {
+                var existeExpirado = await context.CCatalogoElementos.AnyAsync(e => e.ClCatalogoElemento == "EXPIRADO" && e.IdCatalogo == catEstatusPedido.IdCatalogo);
+                if (!existeExpirado)
+                {
+                    context.CCatalogoElementos.Add(new CCatalogoElemento
+                    {
+                        IdCatalogo = catEstatusPedido.IdCatalogo,
+                        ClCatalogoElemento = "EXPIRADO",
+                        NbCatalogoElemento = "Expirado",
+                        ClEstatusCatalogoElemento = "ACTIVO",
+                        ClOperadorCrea = operador,
+                        NbArtefactoCrea = "DbSeeder.Update",
+                        FeCreacion = fecha
+                    });
+                    await context.SaveChangesAsync();
+                }
             }
         }
 
